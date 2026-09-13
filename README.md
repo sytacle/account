@@ -2,7 +2,7 @@
 
 A functional account-management app built with Vite, React 19, Tailwind CSS 4,
 Firebase Authentication, and Firestore. Light/dark theme throughout, real
-sign-in (email/password + Google/GitHub OAuth), and a working profile,
+passwordless email-link sign-in (plus Google/GitHub OAuth), and a working profile,
 security, and linked-accounts flow.
 
 ## Setup
@@ -13,8 +13,9 @@ cp .env.example .env.local
 ```
 
 Fill in `.env.local` with your Firebase project's web config, then follow the
-setup checklist at the bottom of `.env.example` to turn on Email/Password,
-Google, and GitHub sign-in and create a Firestore database. Without a real
+setup checklist at the bottom of `.env.example` to enable Email Link
+(passwordless) sign-in, Google and GitHub sign-in, create a Firestore database,
+deploy the Firestore rules, and register OAuth clients. Without a real
 Firebase project configured, the app will load but every sign-in attempt will
 fail.
 
@@ -25,9 +26,8 @@ npm run dev
 ## What's real vs. illustrative
 
 **Real, backed by Firebase:**
-- Email/password sign-up and sign-in, with email verification
+- Passwordless email-link sign-in (including automatic new-account creation)
 - "Continue with Google" / "Continue with GitHub" (Firebase OAuth)
-- Password reset by email
 - Editable profile (name, phone, birthday — the latter two stored in
   Firestore since Firebase Auth has no field for them)
 - Change password (or set one, for accounts created via Google/GitHub only)
@@ -50,12 +50,17 @@ npm run dev
 ## Routes
 
 - `/` — Account management dashboard (requires sign-in)
-- `/account/login` — Sign in / create account
+- `/account/login` — Passwordless sign in / create account
 - `/oauth/authorize` — OAuth 2.0 authorization/consent UI (requires sign-in)
 
 ### OAuth authorize demo
 
-`/oauth/authorize?client_id=demo-app&client_name=Acme%20App&redirect_uri=https%3A%2F%2Facme.example%2Fcallback&response_type=code&scope=openid%20profile%20email&state=abc123`
+`/oauth/authorize?client_id=demo-app&redirect_uri=https%3A%2F%2Facme.example%2Fcallback&response_type=code&scope=openid%20profile%20email&state=abc123`
+
+Create `clients/demo-app` first using [`firebase/clients/demo-app.json`](firebase/clients/demo-app.json)
+and deploy [`firestore.rules`](firestore.rules), as described in `.env.example`.
+The consent page fetches that registered client document by ID; signed-in users
+can read a known document but cannot list or write the registry.
 
 This screen shows the real signed-in Sytacle user and, on **Allow**, redirects
 the browser back to `redirect_uri` with a generated `code` (or a token in the

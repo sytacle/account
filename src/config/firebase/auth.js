@@ -11,6 +11,8 @@ export const auth = getAuth(app);
 // page, and by the "connect" actions on the Linked accounts screen.
 // Both need to be enabled in Firebase Console -> Authentication ->
 // Sign-in method for signInWithPopup/linkWithPopup to succeed.
+// Passwordless sign-in additionally requires the Email link option under
+// the Email/Password provider; see .env.example for deployment setup.
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.addScope("profile");
 googleProvider.addScope("email");

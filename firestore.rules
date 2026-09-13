@@ -1,0 +1,17 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Account data is private to its owner.
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // OAuth clients are administered outside this browser app. Signed-in
+    // users may retrieve a known client by ID for the consent screen, but
+    // cannot enumerate, create, modify, or delete registered clients.
+    match /clients/{clientId} {
+      allow get: if request.auth != null;
+    }
+  }
+}

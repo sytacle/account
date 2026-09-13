@@ -1,0 +1,13 @@
+{
+  "name": "Acme App",
+  "description": "A sample OAuth client for local development.",
+  "logoUrl": "https://placehold.co/112x112/png?text=A",
+  "redirectUris": [
+    "https://acme.example/callback"
+  ],
+  "privacy": {
+    "policyUrl": "https://acme.example/privacy",
+    "termsUrl": "https://acme.example/terms"
+  },
+  "enabled": true
+}
