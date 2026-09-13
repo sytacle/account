@@ -1,0 +1,1 @@
+{"functions":{"source":".","runtime":"nodejs24"},"hosting":{"public":"public","ignore":["firebase.json","**/.*","**/node_modules/**"],"rewrites":[{"source":"/v1/**","function":{"functionId":"api","region":"asia-southeast1"}}]},"firestore":{"rules":"firestore.rules","indexes":"firestore.indexes.json"}}

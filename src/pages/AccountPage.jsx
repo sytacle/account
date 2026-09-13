@@ -196,9 +196,9 @@ function SecurityCard() {
       <div className="divide-y divide-slate-100 dark:divide-slate-800">
         <Row
           icon={KeyRound}
-          title="Password"
-          description={hasPassword ? "Change your password" : "No password set — you sign in with Google or GitHub"}
-          value={hasPassword ? "Set" : "Not set"}
+          title="Passkeys"
+          description={"Update or add your passkeys"}
+          value={"Not set"}
         />
         <Row
           title="Two-factor authentication"

@@ -1,0 +1,30 @@
+{
+  "name": "sytacle-functions",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": "24"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "serve": "firebase emulators:start --only functions,firestore",
+    "deploy": "firebase deploy --only functions,hosting,firestore",
+    "logs": "firebase functions:log"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.2.1",
+    "firebase-admin": "^13.6.0",
+    "firebase-functions": "^7.0.0",
+    "helmet": "^8.1.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^8.57.1",
+    "eslint-config-google": "^0.14.0",
+    "firebase-functions-test": "^3.4.1",
+    "globals": "^17.12.0"
+  }
+}

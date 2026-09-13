@@ -21,7 +21,9 @@ const firebaseConfig = {
 };
 
 const hasCoreConfig = Boolean(
-  firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.projectId
+  firebaseConfig.apiKey &&
+  firebaseConfig.authDomain &&
+  firebaseConfig.projectId,
 );
 
 if (!hasCoreConfig && env.DEV) {
@@ -30,7 +32,7 @@ if (!hasCoreConfig && env.DEV) {
       "set. Copy .env.example to .env.local and fill in your Firebase " +
       "project's web app config (Firebase Console -> Project settings -> " +
       "General -> Your apps). Auth and Firestore calls will fail until " +
-      "then."
+      "then.",
   );
 }
 
@@ -63,10 +65,12 @@ if (env.VITE_RECAPTCHA_SITE_KEY) {
   if (env.DEV) {
     self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
   }
-  import("firebase/app-check").then(({ initializeAppCheck, ReCaptchaV3Provider }) => {
-    appCheck = initializeAppCheck(app, {
-      provider: new ReCaptchaV3Provider(env.VITE_RECAPTCHA_SITE_KEY),
-      isTokenAutoRefreshEnabled: true,
-    });
-  });
+  import("firebase/app-check").then(
+    ({ initializeAppCheck, ReCaptchaEnterpriseProvider }) => {
+      appCheck = initializeAppCheck(app, {
+        provider: new ReCaptchaEnterpriseProvider(env.VITE_RECAPTCHA_SITE_KEY),
+        isTokenAutoRefreshEnabled: true,
+      });
+    },
+  );
 }

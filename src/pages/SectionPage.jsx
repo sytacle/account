@@ -29,8 +29,12 @@ function SectionHeader({ icon: Icon, title, subtitle }) {
         <Icon size={24} />
       </span>
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">{title}</h1>
-        <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">{subtitle}</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          {title}
+        </h1>
+        <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
+          {subtitle}
+        </p>
       </div>
     </div>
   );
@@ -41,7 +45,9 @@ function SectionHeader({ icon: Icon, title, subtitle }) {
 // ---------------------------------------------------------------------
 function PasswordForm() {
   const { user, changePassword, addPassword } = useAuth();
-  const hasPassword = user?.providerData?.some((p) => p.providerId === "password");
+  const hasPassword = user?.providerData?.some(
+    (p) => p.providerId === "password",
+  );
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [show, setShow] = useState(false);
@@ -64,7 +70,9 @@ function PasswordForm() {
         setNotice("Password updated.");
       } else {
         await addPassword(next);
-        setNotice("Password set — you can now also sign in with email and password.");
+        setNotice(
+          "Password set — you can now also sign in with email and password.",
+        );
       }
       setCurrent("");
       setNext("");
@@ -77,10 +85,16 @@ function PasswordForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3 p-5">
-      {(error || notice) && <FormNotice tone={error ? "error" : "success"}>{error || notice}</FormNotice>}
+      {(error || notice) && (
+        <FormNotice tone={error ? "error" : "success"}>
+          {error || notice}
+        </FormNotice>
+      )}
       {hasPassword && (
         <div>
-          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400">Current password</label>
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400">
+            Current password
+          </label>
           <input
             type={show ? "text" : "password"}
             value={current}
@@ -114,7 +128,13 @@ function PasswordForm() {
         disabled={busy}
         className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
       >
-        {busy ? <Spinner size={16} /> : hasPassword ? "Update password" : "Set password"}
+        {busy ? (
+          <Spinner size={16} />
+        ) : hasPassword ? (
+          "Update password"
+        ) : (
+          "Set password"
+        )}
       </button>
     </form>
   );
@@ -144,11 +164,17 @@ function SecuritySection() {
 
   return (
     <div className="max-w-3xl">
-      <SectionHeader icon={ShieldCheck} title="Security" subtitle="Protect your account and control how you sign in." />
+      <SectionHeader
+        icon={ShieldCheck}
+        title="Security"
+        subtitle="Protect your account and control how you sign in."
+      />
 
       <Card className="mb-5 overflow-hidden">
         <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Password</h3>
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+            Password
+          </h3>
         </div>
         <PasswordForm />
       </Card>
@@ -157,10 +183,20 @@ function SecuritySection() {
         <Row
           icon={Mail}
           title="Email verification"
-          description={user?.emailVerified ? "Your email is verified" : "Verify your email to help recover your account"}
+          description={
+            user?.emailVerified
+              ? "Your email is verified"
+              : "Verify your email to help recover your account"
+          }
           value={user?.emailVerified ? "Verified" : "Pending"}
           onClick={user?.emailVerified ? undefined : handleResend}
-          action={!user?.emailVerified && <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Resend</span>}
+          action={
+            !user?.emailVerified && (
+              <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                Resend
+              </span>
+            )
+          }
         />
         <Row
           icon={KeyRound}
@@ -174,18 +210,23 @@ function SecuritySection() {
         />
       </Card>
 
-      {verifyNotice && <p className="mb-5 text-sm text-slate-500 dark:text-slate-400">{verifyNotice}</p>}
+      {verifyNotice && (
+        <p className="mb-5 text-sm text-slate-500 dark:text-slate-400">
+          {verifyNotice}
+        </p>
+      )}
 
       <button
         onClick={handleSignOut}
         disabled={signingOut}
         className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
       >
-        {signingOut ? <Spinner size={16} /> : <LogOut size={15} />} Sign out of this device
+        {signingOut ? <Spinner size={16} /> : <LogOut size={15} />} Sign out of
+        this device
       </button>
       <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
-        Signing out other devices remotely requires a backend that can revoke sessions — not something a
-        browser-only app can do on its own.
+        Signing out other devices remotely requires a backend that can revoke
+        sessions — not something a browser-only app can do on its own.
       </p>
     </div>
   );
@@ -227,11 +268,21 @@ function LinkedSection() {
 
   return (
     <div className="max-w-3xl">
-      <SectionHeader icon={Link2} title="Linked accounts" subtitle="Connect and manage external sign-in methods." />
-      {error && <div className="mb-4"><FormNotice>{error}</FormNotice></div>}
+      <SectionHeader
+        icon={Link2}
+        title="Linked accounts"
+        subtitle="Connect and manage external sign-in methods."
+      />
+      {error && (
+        <div className="mb-4">
+          <FormNotice>{error}</FormNotice>
+        </div>
+      )}
       <Card className="divide-y divide-slate-100 overflow-hidden dark:divide-slate-800">
         {oauthProviders.map((item) => {
-          const info = user?.providerData?.find((p) => p.providerId === item.id);
+          const info = user?.providerData?.find(
+            (p) => p.providerId === item.id,
+          );
           const connected = connectedIds.has(item.id);
           const busy = busyId === item.id;
           return (
@@ -240,7 +291,9 @@ function LinkedSection() {
                 {item.mark}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.name}</p>
+                <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                  {item.name}
+                </p>
                 <p className="truncate text-xs text-slate-500 dark:text-slate-400">
                   {connected ? info?.email || "Connected" : "Not connected"}
                 </p>
@@ -301,8 +354,10 @@ const toggleMeta = {
 function TogglesSection({ kind }) {
   const { profile, updatePrivacyPref, updateNotificationPref } = useAuth();
   const meta = toggleMeta[kind];
-  const values = (kind === "privacy" ? profile?.privacy : profile?.notifications) || {};
-  const update = kind === "privacy" ? updatePrivacyPref : updateNotificationPref;
+  const values =
+    (kind === "privacy" ? profile?.privacy : profile?.notifications) || {};
+  const update =
+    kind === "privacy" ? updatePrivacyPref : updateNotificationPref;
   const [pending, setPending] = useState("");
 
   async function handleToggle(key) {
@@ -316,7 +371,11 @@ function TogglesSection({ kind }) {
 
   return (
     <div className="max-w-3xl">
-      <SectionHeader icon={meta.icon} title={meta.title} subtitle={meta.subtitle} />
+      <SectionHeader
+        icon={meta.icon}
+        title={meta.title}
+        subtitle={meta.subtitle}
+      />
       <Card className="divide-y divide-slate-100 overflow-hidden dark:divide-slate-800">
         {meta.fields.map(([title, description]) => (
           <Row
@@ -372,7 +431,7 @@ const staticContent = {
     subtitle: "Manage your data, storage, and downloads.",
     icon: Cloud,
     rows: [
-      ["Storage usage", "2.4 GB of 15 GB used"],
+      ["Storage usage", "2.4 MB of 5 GB used"],
       ["Export your data", "Download a copy of your Sytacle data"],
       ["Delete data", "Permanently remove selected data"],
     ],
@@ -393,13 +452,21 @@ function StaticSection({ type }) {
   const data = staticContent[type];
   return (
     <div className="max-w-3xl">
-      <SectionHeader icon={data.icon} title={data.title} subtitle={data.subtitle} />
+      <SectionHeader
+        icon={data.icon}
+        title={data.title}
+        subtitle={data.subtitle}
+      />
       <Card className="divide-y divide-slate-100 overflow-hidden dark:divide-slate-800">
         {data.rows.map(([title, description]) => (
           <Row key={title} title={title} description={description} />
         ))}
       </Card>
-      {data.note && <p className="mt-4 text-xs text-slate-400 dark:text-slate-500">{data.note}</p>}
+      {data.note && (
+        <p className="mt-4 text-xs text-slate-400 dark:text-slate-500">
+          {data.note}
+        </p>
+      )}
     </div>
   );
 }
@@ -407,6 +474,7 @@ function StaticSection({ type }) {
 export default function SectionPage({ type }) {
   if (type === "security") return <SecuritySection />;
   if (type === "linked") return <LinkedSection />;
-  if (type === "privacy" || type === "notifications") return <TogglesSection kind={type} />;
+  if (type === "privacy" || type === "notifications")
+    return <TogglesSection kind={type} />;
   return <StaticSection type={type} />;
 }

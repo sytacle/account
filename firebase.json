@@ -4,6 +4,7 @@
   },
   "hosting": {
     "public": "dist",
+    "site": "sytacle-account",
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -99,5 +100,22 @@
         "supportEmail": "support@sytacle.com"
       }
     }
-  }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "echo 'It`s working!'"
+      ]
+    }
+  ]
 }
