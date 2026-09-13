@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "sytacle"
+  },
+  "targets": {
+    "sytacle": {
+      "hosting": {
+        "account": [
+          "sytacle-account"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
