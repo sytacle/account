@@ -4,11 +4,15 @@ import {
   createUserWithEmailAndPassword,
   linkWithCredential,
   linkWithPopup,
+  getAdditionalUserInfo,
+  isSignInWithEmailLink,
   onAuthStateChanged,
   reauthenticateWithCredential,
   sendEmailVerification,
   sendPasswordResetEmail,
+  sendSignInLinkToEmail,
   signInWithEmailAndPassword,
+  signInWithEmailLink,
   signInWithPopup,
   signOut,
   unlink,
@@ -86,6 +90,26 @@ export function AuthProvider({ children }) {
       async signInWithEmail(email, password) {
         const cred = await signInWithEmailAndPassword(auth, email, password);
         return cred.user;
+      },
+
+      async sendPasswordlessSignInLink(email, continueUrl) {
+        await sendSignInLinkToEmail(auth, email, {
+          url: continueUrl,
+          handleCodeInApp: true,
+        });
+      },
+
+      async completePasswordlessSignIn(email, emailLink) {
+        if (!isSignInWithEmailLink(auth, emailLink)) {
+          throw new Error("This sign-in link is invalid or has expired.");
+        }
+        const credential = await signInWithEmailLink(auth, email, emailLink);
+        const profile = await ensureUserProfile(credential.user);
+        return {
+          user: credential.user,
+          isNewUser: getAdditionalUserInfo(credential)?.isNewUser ?? false,
+          profile,
+        };
       },
 
       async signInWithGoogle() {
