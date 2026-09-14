@@ -1,0 +1,25 @@
+{
+  "name": "sytacle-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "lint": "eslint .",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.2.1",
+    "firebase-admin": "^13.6.0",
+    "helmet": "^8.1.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.35.0",
+    "eslint": "^9.35.0",
+    "vercel": "^48.2.0"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}
