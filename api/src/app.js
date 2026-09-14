@@ -12,7 +12,7 @@ import { oauthError } from "./lib/http.js";
 const app = express();
 
 app.disable("x-powered-by");
-app.set("trust proxy", true);
+app.set('trust proxy', 1);
 
 app.use(
   helmet({
@@ -30,20 +30,20 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 
-app.use("/v1/oauth", limiter);
+app.use("/v3/oauth", limiter);
 
 app.get("/health", (_req, res) =>
-  res.json({ ok: true, service: "sytacle-api", version: "v1" }),
+  res.json({ ok: true, service: "sytacle-api", version: "v3" }),
 );
 
-app.post("/v1/oauth/authorize", authorize);
-app.post("/v1/oauth/token", tokenExchange);
-app.post("/v1/oauth/revoke", revokeToken);
-app.get("/v1/oauth/clients/:clientId", publicClient);
-app.post("/v1/oauth/clients", createClient);
-app.get("/v1/oauth/userinfo", userInfo);
-app.get("/v1/users/me", getProfile);
-app.patch("/v1/users/me", updateProfile);
+app.post("/v3/oauth/authorize", authorize);
+app.post("/v3/oauth/token", tokenExchange);
+app.post("/v3/oauth/revoke", revokeToken);
+app.get("/v3/oauth/clients/:clientId", publicClient);
+app.post("/v3/oauth/clients", createClient);
+app.get("/v3/oauth/userinfo", userInfo);
+app.get("/v3/users/me", getProfile);
+app.patch("/v3/users/me", updateProfile);
 
 app.use((req, res) =>
   oauthError(res, "not_found", `No route for ${req.method} ${req.path}.`, 404),

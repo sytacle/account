@@ -13,18 +13,18 @@ Firebase Auth blocking triggers such as `beforeUserCreated` and `beforeUserSigne
 
 ## Public routes
 
-- `POST /v1/oauth/authorize`
-- `POST /v1/oauth/token`
-- `POST /v1/oauth/revoke`
-- `GET /v1/oauth/clients/:clientId`
-- `POST /v1/oauth/clients` (Firebase admin token required)
-- `GET /v1/oauth/userinfo`
-- `GET /v1/users/me`
-- `PATCH /v1/users/me`
+- `POST /v3/oauth/authorize`
+- `POST /v3/oauth/token`
+- `POST /v3/oauth/revoke`
+- `GET /v3/oauth/clients/:clientId`
+- `POST /v3/oauth/clients` (Firebase admin token required)
+- `GET /v3/oauth/userinfo`
+- `GET /v3/users/me`
+- `PATCH /v3/users/me`
 - `GET /health`
 - `GET /admin/check` (Firebase admin token required)
 
-The `/v1/**` rewrite makes these available without the Vercel `/api` prefix. The underlying Vercel Function remains `api/index.js`.
+The `/v3/**` rewrite makes these available without the Vercel `/api` prefix. The underlying Vercel Function remains `api/index.js`.
 
 ## Firebase environment variables
 
@@ -55,11 +55,11 @@ npm run deploy
 ## Example URLs
 
 ```text
-https://api.sytacle.com/v1/oauth/authorize
-https://api.sytacle.com/v1/oauth/token
-https://api.sytacle.com/v1/oauth/revoke
-https://api.sytacle.com/v1/oauth/userinfo
-https://api.sytacle.com/v1/users/me
+https://api.sytacle.com/v3/oauth/authorize
+https://api.sytacle.com/v3/oauth/token
+https://api.sytacle.com/v3/oauth/revoke
+https://api.sytacle.com/v3/oauth/userinfo
+https://api.sytacle.com/v3/users/me
 ```
 
 ## Security notes
