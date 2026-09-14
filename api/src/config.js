@@ -2,10 +2,14 @@ const n = (k, d) => {
   const v = Number.parseInt(process.env[k] || "", 10);
   return Number.isFinite(v) && v > 0 ? v : d;
 };
+
 export const config = {
   region: process.env.FUNCTIONS_REGION || "asia-southeast1",
   corsOrigins: new Set(
-    (process.env.CORS_ORIGINS || "https://account.sytacle.com,http://localhost:5173")
+    (
+      process.env.CORS_ORIGINS ||
+      "https://my.sytacle.com,https://sytacle.com,https://www.sytacle.com,https://console.cloud.sytacle.com,https://cloud.sytacle.com,http://localhost:5173"
+    )
       .split(",")
       .map((origin) => origin.trim())
       .filter(Boolean),
