@@ -15,8 +15,8 @@ export const verifyRedirectUri = (c, u) =>
   Array.isArray(c?.redirectUris) && c.redirectUris.includes(u);
 
 export function authenticateClient(req, b, c) {
-  if (!c || c.disabled) return false;
-  if (c.publicClient) return true;
+  if (!c || c.enabled) return false;
+  if (c.public) return true;
   
   let id = b.client_id,
     sec = b.client_secret;
@@ -51,6 +51,7 @@ export async function publicClient(req, res) {
     public_client: !!c.public,
   });
 }
+
 export async function createClient(req, res) {
   await verifyBearerToken(req, true);
   const b = req.body || {},
@@ -87,6 +88,7 @@ export async function createClient(req, res) {
       return oauthError(res, "invalid_request", "Invalid redirect URI.");
     }
   }
+  
   const scopes = Array.isArray(b.allowed_scopes)
     ? [...new Set(b.allowed_scopes)]
     : ["openid", "profile", "email", "account"];
@@ -99,13 +101,21 @@ export async function createClient(req, res) {
     .collection("clients")
     .doc(id)
     .set({
+      id: id,
       name: b.name.trim(),
+      logoUrl: "https://cdn.sytacle.com/assets/logos/sytacle.png",
+      description: "Client app",
       redirectUris: uris,
+      privacy: {
+        policyUrl: null,
+        termsUrl: null,
+      },
       scopes: scopes,
       public: !!b.public_client,
       secretHash: secret ? hashSecret(secret) : null,
       enabled: false,
       createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
     });
   
   return send(res, 201, { client_id: id, client_secret: secret });
