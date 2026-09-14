@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   CalendarDays,
   CheckCircle2,
@@ -187,6 +187,7 @@ function Info({ icon: Icon, label, value }) {
 
 function SecurityCard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const mfaCount = user?.multiFactor?.enrolledFactors?.length || 0;
 
   return (
@@ -198,11 +199,13 @@ function SecurityCard() {
           title="Passkeys"
           description={"Update or add your passkeys"}
           value={"Not set"}
+          onClick={() => navigate("/account/security/passkeys")}
         />
         <Row
           title="Two-factor authentication"
           description="An extra layer of protection"
           value={mfaCount > 0 ? "Enabled" : "Not enabled"}
+          onClick={() => navigate("/account/security/two-factor-authentication")}
         />
         <Row
           title="Email verification"
