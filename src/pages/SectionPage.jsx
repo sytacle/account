@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Bell,
   Cloud,
@@ -184,6 +184,17 @@ function MfaCard() {
   );
 }
 
+function SecurityBackLink() {
+  return (
+    <Link
+      to="/account/security"
+      className="mb-4 inline-flex text-sm font-medium text-blue-700 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+    >
+      ← Back to security
+    </Link>
+  );
+}
+
 function SecuritySection() {
   const { user, resendVerificationEmail, signOutUser } = useAuth();
   const navigate = useNavigate();
@@ -209,9 +220,21 @@ function SecuritySection() {
         title="Security"
         subtitle="Protect your account and control how you sign in."
       />
-      <PasskeysCard />
-      <MfaCard />
       <Card className="mb-5 divide-y divide-slate-100 overflow-hidden dark:divide-slate-800">
+        <Row
+          icon={KeyRound}
+          title="Passkeys"
+          description="Set up passkeys for faster, passwordless sign-in."
+          value="Manage"
+          onClick={() => navigate("/account/security/passkeys")}
+        />
+        <Row
+          icon={ShieldCheck}
+          title="Two-factor authentication"
+          description="Add an extra verification step to secure your account."
+          value={user?.multiFactor?.enrolledFactors?.length ? "Enabled" : "Not enabled"}
+          onClick={() => navigate("/account/security/two-factor-authentication")}
+        />
         <Row
           icon={Mail}
           title="Email verification"
@@ -244,6 +267,34 @@ function SecuritySection() {
         {signingOut ? <Spinner size={16} /> : <LogOut size={15} />} Sign out of
         this device
       </button>
+    </div>
+  );
+}
+
+function PasskeysSection() {
+  return (
+    <div className="max-w-3xl">
+      <SecurityBackLink />
+      <SectionHeader
+        icon={KeyRound}
+        title="Passkeys"
+        subtitle="Add a passkey to sign in with your device, fingerprint, or security key."
+      />
+      <PasskeysCard />
+    </div>
+  );
+}
+
+function TwoFactorAuthenticationSection() {
+  return (
+    <div className="max-w-3xl">
+      <SecurityBackLink />
+      <SectionHeader
+        icon={ShieldCheck}
+        title="Two-factor authentication"
+        subtitle="Set up SMS verification to add an extra layer of account protection."
+      />
+      <MfaCard />
     </div>
   );
 }
@@ -586,6 +637,15 @@ function StaticSection({ type }) {
 }
 
 export default function SectionPage({ type }) {
+  const location = useLocation();
+  const securityView = location.pathname.split("/")[3] || "";
+
+  if (type === "security" && securityView === "passkeys") {
+    return <PasskeysSection />;
+  }
+  if (type === "security" && securityView === "two-factor-authentication") {
+    return <TwoFactorAuthenticationSection />;
+  }
   if (type === "security") return <SecuritySection />;
   if (type === "linked") return <LinkedSection />;
   if (type === "devices") return <DevicesSection />;
