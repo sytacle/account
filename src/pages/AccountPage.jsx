@@ -187,7 +187,6 @@ function Info({ icon: Icon, label, value }) {
 
 function SecurityCard() {
   const { user } = useAuth();
-  const hasPassword = user?.providerData?.some((p) => p.providerId === "password");
   const mfaCount = user?.multiFactor?.enrolledFactors?.length || 0;
 
   return (

@@ -21,6 +21,8 @@ Firebase Auth blocking triggers such as `beforeUserCreated` and `beforeUserSigne
 - `GET /v3/oauth/userinfo`
 - `GET /v3/users/me`
 - `PATCH /v3/users/me`
+- `GET|POST|DELETE /v3/users/me/sessions`
+- `DELETE /v3/users/me/sessions/:sessionId`
 - `GET /health`
 - `GET /admin/check` (Firebase admin token required)
 
@@ -75,3 +77,11 @@ The OAuth implementation retains the existing controls: Authorization Code + man
 The current rate limiter is process-local. For high-scale production traffic, put a distributed limiter/WAF in front of the API.
 
 Before public third-party OAuth launch, add OAuth/OIDC conformance tests, structured audit/security logging, alerting, abuse monitoring, secret rotation, backup/retention policies, and a documented incident/revocation process.
+
+## Device sessions
+
+The Account client assigns each browser installation a random device-session ID and
+registers its user agent and last-seen time at `POST /v3/users/me/sessions`.
+Sessions can be listed and remotely ended through the protected endpoints above.
+A revoked session is rejected whenever it presents `X-Device-Session`; deployers
+should configure `VITE_ACCOUNT_API_URL` to this API origin.

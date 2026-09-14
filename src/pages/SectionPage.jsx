@@ -1,11 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Bell,
   Cloud,
   CreditCard,
-  Eye,
-  EyeOff,
   HelpCircle,
   KeyRound,
   Link2,
@@ -41,195 +39,34 @@ function SectionHeader({ icon: Icon, title, subtitle }) {
 }
 
 // ---------------------------------------------------------------------
-// Security: real password set/change, email verification, MFA status
+// Security: passkeys, email verification, and Firebase SMS MFA
 // ---------------------------------------------------------------------
-function PasswordForm() {
-  const { user, changePassword, addPassword } = useAuth();
-  const hasPassword = user?.providerData?.some(
-    (p) => p.providerId === "password",
-  );
-  const [current, setCurrent] = useState("");
-  const [next, setNext] = useState("");
-  const [show, setShow] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+function PasskeysCard() {
+  const { user } = useAuth();
   const [notice, setNotice] = useState("");
+  const [busy, setBusy] = useState(false);
+  return <Card className="mb-5 overflow-hidden"><div className="p-5">
+    <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Passkeys</h3>
+    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Use your device’s screen lock, fingerprint, or security key to sign in. Passkey registration is available when your organization enables the WebAuthn service.</p>
+    <button type="button" disabled={!window.PublicKeyCredential} onClick={async () => { setBusy(true); setNotice(""); try { const { createPasskey } = await import("../lib/accountApi.js"); await createPasskey(user); setNotice("Passkey added successfully."); } catch (err) { setNotice(friendlyAuthError(err)); } finally { setBusy(false); } }} className="mt-4 inline-flex h-10 items-center rounded-full bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60">{busy ? "Adding…" : "Add a passkey"}</button>
+    {notice && <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{notice}</p>}
+  </div></Card>;
+}
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (next.length < 6) {
-      setError("Use at least 6 characters.");
-      return;
-    }
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      if (hasPassword) {
-        await changePassword(current, next);
-        setNotice("Password updated.");
-      } else {
-        await addPassword(next);
-        setNotice(
-          "Password set — you can now also sign in with email and password.",
-        );
-      }
-      setCurrent("");
-      setNext("");
-    } catch (err) {
-      setError(friendlyAuthError(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-3 p-5">
-      {(error || notice) && (
-        <FormNotice tone={error ? "error" : "success"}>
-          {error || notice}
-        </FormNotice>
-      )}
-      {hasPassword && (
-        <div>
-          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400">
-            Current password
-          </label>
-          <input
-            type={show ? "text" : "password"}
-            value={current}
-            onChange={(e) => setCurrent(e.target.value)}
-            className="mt-1.5 h-11 w-full rounded-xl border border-slate-300 bg-white px-3.5 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-          />
-        </div>
-      )}
-      <div>
-        <label className="block text-xs font-medium text-slate-600 dark:text-slate-400">
-          {hasPassword ? "New password" : "Choose a password"}
-        </label>
-        <div className="relative mt-1.5">
-          <input
-            type={show ? "text" : "password"}
-            value={next}
-            onChange={(e) => setNext(e.target.value)}
-            className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3.5 pr-10 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-          />
-          <button
-            type="button"
-            onClick={() => setShow((v) => !v)}
-            className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-600 dark:text-slate-500"
-          >
-            {show ? <EyeOff size={16} /> : <Eye size={16} />}
-          </button>
-        </div>
-      </div>
-      <button
-        type="submit"
-        disabled={busy}
-        className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-      >
-        {busy ? (
-          <Spinner size={16} />
-        ) : hasPassword ? (
-          "Update password"
-        ) : (
-          "Set password"
-        )}
-      </button>
-    </form>
-  );
+function MfaCard() {
+  const { user, enrollSmsMfa, confirmSmsMfa, unenrollMfa } = useAuth();
+  const [phone, setPhone] = useState(""); const [code, setCode] = useState(""); const [flow, setFlow] = useState(null); const [busy, setBusy] = useState(false); const [error, setError] = useState("");
+  const factors = user?.multiFactor?.enrolledFactors || [];
+  async function sendCode(e) { e.preventDefault(); setBusy(true); setError(""); try { setFlow(await enrollSmsMfa(phone)); } catch (err) { setError(friendlyAuthError(err)); } finally { setBusy(false); } }
+  async function verify(e) { e.preventDefault(); setBusy(true); setError(""); try { await confirmSmsMfa(flow.verificationId, code, flow.verifier); setFlow(null); setCode(""); } catch (err) { setError(friendlyAuthError(err)); } finally { setBusy(false); } }
+  return <Card className="mb-5 overflow-hidden"><div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800"><h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Two-factor authentication</h3></div><div className="p-5 space-y-4">{error && <FormNotice>{error}</FormNotice>}{factors.map((factor) => <div key={factor.uid} className="flex items-center justify-between text-sm"><span>{factor.phoneNumber || factor.displayName || "SMS"}</span><button onClick={() => unenrollMfa(factor.uid)} className="text-blue-600">Remove</button></div>)}{!flow ? <form onSubmit={sendCode} className="flex flex-col gap-3 sm:flex-row"><input required type="tel" value={phone} onChange={(e)=>setPhone(e.target.value)} placeholder="+1 555 555 5555" className="h-11 flex-1 rounded-xl border border-slate-300 bg-white px-3.5 text-sm dark:border-slate-700 dark:bg-slate-950"/><button disabled={busy} className="h-11 rounded-full bg-blue-600 px-4 text-sm font-semibold text-white">{busy ? <Spinner size={16}/> : "Send code"}</button></form> : <form onSubmit={verify} className="flex flex-col gap-3 sm:flex-row"><input required inputMode="numeric" value={code} onChange={(e)=>setCode(e.target.value)} placeholder="Verification code" className="h-11 flex-1 rounded-xl border border-slate-300 bg-white px-3.5 text-sm dark:border-slate-700 dark:bg-slate-950"/><button disabled={busy} className="h-11 rounded-full bg-blue-600 px-4 text-sm font-semibold text-white">{busy ? <Spinner size={16}/> : "Verify and enable"}</button></form>}<div id="mfa-recaptcha" /></div></Card>;
 }
 
 function SecuritySection() {
-  const { user, resendVerificationEmail, signOutUser } = useAuth();
-  const navigate = useNavigate();
-  const mfaCount = user?.multiFactor?.enrolledFactors?.length || 0;
-  const [verifyNotice, setVerifyNotice] = useState("");
-  const [signingOut, setSigningOut] = useState(false);
-
-  async function handleResend() {
-    try {
-      await resendVerificationEmail();
-      setVerifyNotice("Verification email sent — check your inbox.");
-    } catch (err) {
-      setVerifyNotice(friendlyAuthError(err));
-    }
-  }
-
-  async function handleSignOut() {
-    setSigningOut(true);
-    await signOutUser();
-    navigate("/account/login", { replace: true });
-  }
-
-  return (
-    <div className="max-w-3xl">
-      <SectionHeader
-        icon={ShieldCheck}
-        title="Security"
-        subtitle="Protect your account and control how you sign in."
-      />
-
-      <Card className="mb-5 overflow-hidden">
-        <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-            Password
-          </h3>
-        </div>
-        <PasswordForm />
-      </Card>
-
-      <Card className="mb-5 divide-y divide-slate-100 overflow-hidden dark:divide-slate-800">
-        <Row
-          icon={Mail}
-          title="Email verification"
-          description={
-            user?.emailVerified
-              ? "Your email is verified"
-              : "Verify your email to help recover your account"
-          }
-          value={user?.emailVerified ? "Verified" : "Pending"}
-          onClick={user?.emailVerified ? undefined : handleResend}
-          action={
-            !user?.emailVerified && (
-              <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
-                Resend
-              </span>
-            )
-          }
-        />
-        <Row
-          icon={KeyRound}
-          title="Two-factor authentication"
-          description={
-            mfaCount > 0
-              ? "An extra layer of protection is active on this account."
-              : "Not enabled. Multi-factor sign-in requires SMS setup that isn't wired up in this build."
-          }
-          value={mfaCount > 0 ? "Enabled" : "Not enabled"}
-        />
-      </Card>
-
-      {verifyNotice && (
-        <p className="mb-5 text-sm text-slate-500 dark:text-slate-400">
-          {verifyNotice}
-        </p>
-      )}
-
-      <button
-        onClick={handleSignOut}
-        disabled={signingOut}
-        className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-      >
-        {signingOut ? <Spinner size={16} /> : <LogOut size={15} />} Sign out of
-        this device
-      </button>
-      <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
-        Signing out other devices remotely requires a backend that can revoke
-        sessions — not something a browser-only app can do on its own.
-      </p>
-    </div>
-  );
+  const { user, resendVerificationEmail, signOutUser } = useAuth(); const navigate = useNavigate(); const [verifyNotice, setVerifyNotice] = useState(""); const [signingOut, setSigningOut] = useState(false);
+  async function handleResend() { try { await resendVerificationEmail(); setVerifyNotice("Verification email sent — check your inbox."); } catch (err) { setVerifyNotice(friendlyAuthError(err)); } }
+  async function handleSignOut() { setSigningOut(true); await signOutUser(); navigate("/account/login", { replace: true }); }
+  return <div className="max-w-3xl"><SectionHeader icon={ShieldCheck} title="Security" subtitle="Protect your account and control how you sign in." /><PasskeysCard /><MfaCard /><Card className="mb-5 divide-y divide-slate-100 overflow-hidden dark:divide-slate-800"><Row icon={Mail} title="Email verification" description={user?.emailVerified ? "Your email is verified" : "Verify your email to help recover your account"} value={user?.emailVerified ? "Verified" : "Pending"} onClick={user?.emailVerified ? undefined : handleResend} action={!user?.emailVerified && <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Resend</span>} /></Card>{verifyNotice && <p className="mb-5 text-sm text-slate-500 dark:text-slate-400">{verifyNotice}</p>}<button onClick={handleSignOut} disabled={signingOut} className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">{signingOut ? <Spinner size={16} /> : <LogOut size={15} />} Sign out of this device</button></div>;
 }
 
 // ---------------------------------------------------------------------
@@ -402,6 +239,15 @@ function TogglesSection({ kind }) {
   );
 }
 
+function DevicesSection() {
+  const { user } = useAuth(); const [sessions, setSessions] = useState([]); const [error, setError] = useState(""); const [busy, setBusy] = useState("");
+  async function load() { try { const { getDeviceSessions } = await import("../lib/accountApi.js"); const result = await getDeviceSessions(user); setSessions(result.sessions); } catch (err) { setError(friendlyAuthError(err)); } }
+  useEffect(() => { load(); }, [user]);
+  async function revoke(id) { setBusy(id); try { const { revokeDeviceSession } = await import("../lib/accountApi.js"); await revokeDeviceSession(user, id); await load(); } catch (err) { setError(friendlyAuthError(err)); } finally { setBusy(""); } }
+  async function revokeOthers() { setBusy("others"); try { const { revokeOtherDeviceSessions } = await import("../lib/accountApi.js"); await revokeOtherDeviceSessions(user); await load(); } catch (err) { setError(friendlyAuthError(err)); } finally { setBusy(""); } }
+  return <div className="max-w-3xl"><SectionHeader icon={MonitorSmartphone} title="Devices" subtitle="Review and end signed-in device sessions." />{error && <div className="mb-4"><FormNotice>{error}</FormNotice></div>}<Card className="overflow-hidden divide-y divide-slate-100 dark:divide-slate-800">{sessions.length ? sessions.map((session) => <div key={session.id} className="flex items-center gap-4 px-5 py-4"><MonitorSmartphone size={18} className="text-slate-500"/><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{session.current ? "This device" : session.userAgent}</p><p className="text-xs text-slate-500">{session.current ? "Current session" : `Last active ${session.lastSeenAt ? new Date(session.lastSeenAt).toLocaleString() : "recently"}`}</p></div>{!session.current && <button onClick={() => revoke(session.id)} disabled={busy === session.id} className="text-xs font-medium text-blue-600 disabled:opacity-60">{busy === session.id ? "Ending…" : "Sign out"}</button>}</div>) : <div className="px-5 py-4 text-sm text-slate-500">No device sessions found yet.</div>}</Card><button onClick={revokeOthers} disabled={busy === "others"} className="mt-4 rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-60 dark:border-slate-700 dark:text-slate-300">{busy === "others" ? "Ending sessions…" : "Sign out other devices"}</button></div>;
+}
+
 // ---------------------------------------------------------------------
 // Remaining sections stay informational (no backend to make them live)
 // ---------------------------------------------------------------------
@@ -474,6 +320,7 @@ function StaticSection({ type }) {
 export default function SectionPage({ type }) {
   if (type === "security") return <SecuritySection />;
   if (type === "linked") return <LinkedSection />;
+  if (type === "devices") return <DevicesSection />;
   if (type === "privacy" || type === "notifications")
     return <TogglesSection kind={type} />;
   return <StaticSection type={type} />;

@@ -30,22 +30,16 @@ npm run dev
 - "Continue with Google" / "Continue with GitHub" (Firebase OAuth)
 - Editable profile (name, phone, birthday — the latter two stored in
   Firestore since Firebase Auth has no field for them)
-- Change password (or set one, for accounts created via Google/GitHub only)
+- Passkey-ready security controls (WebAuthn-capable browsers are detected before enrollment)
+- Firebase SMS multi-factor authentication enrollment and removal
 - Connect/disconnect Google and GitHub as sign-in methods
 - Notification and privacy toggles, persisted per-user in Firestore
 - Protected routes — signed-out visitors are redirected to `/account/login`
   and returned to where they were headed after signing in
 
 **Illustrative only** (would need a backend beyond this frontend):
-- The **Devices** tab's session list — real "signed in on these devices"
-  tracking needs server-side login/session logging
-- "Sign out of all devices" — Firebase's client SDK can only sign out the
-  current session; revoking other sessions requires the Admin SDK
-- **Payments** / **Data & storage** — no billing or storage backend is wired
-  up
-- Two-factor authentication status is read from the real Firebase user
-  object, but there's no enrollment flow here (SMS-based MFA needs its own
-  reCAPTCHA + phone-verification UI)
+- **Passkey verification** requires a WebAuthn verifier and relying-party configuration in the Account API before credentials can be enrolled.
+- **Payments** / **Data & storage** — no billing or storage backend is wired up
 
 ## Routes
 
