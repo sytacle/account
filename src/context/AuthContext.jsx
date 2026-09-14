@@ -1,13 +1,14 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import {
-  EmailAuthProvider,
+  PhoneAuthProvider,
+  PhoneMultiFactorGenerator,
+  RecaptchaVerifier,
+  multiFactor,
   createUserWithEmailAndPassword,
-  linkWithCredential,
   linkWithPopup,
   getAdditionalUserInfo,
   isSignInWithEmailLink,
   onAuthStateChanged,
-  reauthenticateWithCredential,
   sendEmailVerification,
   sendPasswordResetEmail,
   sendSignInLinkToEmail,
@@ -16,10 +17,10 @@ import {
   signInWithPopup,
   signOut,
   unlink,
-  updatePassword,
   updateProfile,
 } from "firebase/auth";
 import { auth, githubProvider, googleProvider } from "../config/firebase/auth.js";
+import { registerDeviceSession } from "../lib/accountApi.js";
 import {
   ensureUserProfile,
   subscribeToUserProfile,
@@ -40,6 +41,7 @@ export function AuthProvider({ children }) {
       setUser(nextUser);
       setAuthLoading(false);
       if (!nextUser) setProfile(null);
+      else registerDeviceSession(nextUser).catch((err) => console.warn("Unable to register device session:", err));
     });
     return unsubscribe;
   }, []);
@@ -130,6 +132,33 @@ export function AuthProvider({ children }) {
         if (auth.currentUser) await sendEmailVerification(auth.currentUser);
       },
 
+      async enrollSmsMfa(phoneNumber, verificationCode) {
+        if (!auth.currentUser) throw new Error("Not signed in");
+        if (!verificationCode) {
+          const verifier = new RecaptchaVerifier(auth, "mfa-recaptcha", { size: "invisible" });
+          const session = await multiFactor(auth.currentUser).getSession();
+          const verificationId = await new PhoneAuthProvider(auth).verifyPhoneNumber({ phoneNumber, session }, verifier);
+          return { verificationId, verifier };
+        }
+        throw new Error("A verification session is required.");
+      },
+
+      async confirmSmsMfa(verificationId, verificationCode, verifier) {
+        if (!auth.currentUser) throw new Error("Not signed in");
+        const credential = PhoneAuthProvider.credential(verificationId, verificationCode);
+        await multiFactor(auth.currentUser).enroll(PhoneMultiFactorGenerator.assertion(credential), "SMS");
+        verifier?.clear();
+        await auth.currentUser.reload();
+        setUser({ ...auth.currentUser });
+      },
+
+      async unenrollMfa(factorUid) {
+        if (!auth.currentUser) throw new Error("Not signed in");
+        await multiFactor(auth.currentUser).unenroll(factorUid);
+        await auth.currentUser.reload();
+        setUser({ ...auth.currentUser });
+      },
+
       async signOutUser() {
         await signOut(auth);
       },
@@ -153,33 +182,6 @@ export function AuthProvider({ children }) {
         if (Object.keys(docPatch).length) {
           await updateUserProfileDoc(auth.currentUser.uid, docPatch);
         }
-      },
-
-      /** Requires the user's current password, then sets the new one. */
-      async changePassword(currentPassword, newPassword) {
-        if (!auth.currentUser?.email) throw new Error("Not signed in");
-        const credential = EmailAuthProvider.credential(
-          auth.currentUser.email,
-          currentPassword
-        );
-        await reauthenticateWithCredential(auth.currentUser, credential);
-        await updatePassword(auth.currentUser, newPassword);
-        await updateUserProfileDoc(auth.currentUser.uid, {
-          lastPasswordChangeAt: new Date().toISOString(),
-        });
-      },
-
-      /** For accounts created via Google/GitHub only — adds an
-       *  email+password sign-in method without needing a current
-       *  password (there isn't one yet). */
-      async addPassword(newPassword) {
-        if (!auth.currentUser?.email) throw new Error("Not signed in");
-        const credential = EmailAuthProvider.credential(auth.currentUser.email, newPassword);
-        await linkWithCredential(auth.currentUser, credential);
-        setUser({ ...auth.currentUser });
-        await updateUserProfileDoc(auth.currentUser.uid, {
-          lastPasswordChangeAt: new Date().toISOString(),
-        });
       },
 
       async linkGoogle() {

@@ -6,6 +6,8 @@ import { tokenExchange, revokeToken } from "./oauth/token.js";
 import { createClient, publicClient } from "./oauth/clients.js";
 import { userInfo } from "./oauth/userinfo.js";
 import { getProfile, updateProfile } from "./users/profile.js";
+import { deletePasskey, listPasskeys, passkeyOptions, registerPasskey } from "./users/passkeys.js";
+import { listSessions, revokeOtherSessions, revokeSession, touchSession } from "./users/sessions.js";
 import { verifyBearerToken } from "./auth/security.js";
 import { oauthError } from "./lib/http.js";
 import { config } from "./config.js";
@@ -29,7 +31,7 @@ app.use((req, res, next) => {
   if (origin && config.corsOrigins.has(origin)) {
     res.set("Access-Control-Allow-Origin", origin);
     res.set("Vary", "Origin");
-    res.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
+    res.set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Device-Session");
     res.set("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS");
   }
   if (req.method === "OPTIONS") return res.sendStatus(204);
@@ -67,6 +69,14 @@ app.get("/admin/check", async (req, res) => {
 });
 app.get("/v3/users/me", getProfile);
 app.patch("/v3/users/me", updateProfile);
+app.post("/v3/users/me/passkeys/options", passkeyOptions);
+app.get("/v3/users/me/passkeys", listPasskeys);
+app.post("/v3/users/me/passkeys", registerPasskey);
+app.delete("/v3/users/me/passkeys/:credentialId", deletePasskey);
+app.get("/v3/users/me/sessions", listSessions);
+app.post("/v3/users/me/sessions", touchSession);
+app.delete("/v3/users/me/sessions", revokeOtherSessions);
+app.delete("/v3/users/me/sessions/:sessionId", revokeSession);
 
 app.use((req, res) =>
   oauthError(res, "not_found", `No route for ${req.method} ${req.path}.`, 404),
