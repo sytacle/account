@@ -474,6 +474,44 @@ function DevicesSection() {
   const [sessions, setSessions] = useState([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
+  const [expandedId, setExpandedId] = useState("");
+
+  function formatDateTime(value) {
+    if (!value) return "Not available";
+    return new Date(value).toLocaleString();
+  }
+
+  function parseUserAgent(userAgent) {
+    const value = userAgent || "";
+    const browser =
+      /edg\//i.test(value) ? "Microsoft Edge" :
+      /chrome\//i.test(value) && !/edg\//i.test(value) ? "Google Chrome" :
+      /firefox\//i.test(value) ? "Mozilla Firefox" :
+      /safari\//i.test(value) && !/chrome\//i.test(value) ? "Safari" :
+      /opr\//i.test(value) ? "Opera" :
+      "Unknown browser";
+    const os =
+      /windows nt 10/i.test(value) ? "Windows 10/11" :
+      /windows nt/i.test(value) ? "Windows" :
+      /android/i.test(value) ? "Android" :
+      /iphone|ipad|ipod/i.test(value) ? "iOS" :
+      /mac os x/i.test(value) ? "macOS" :
+      /linux/i.test(value) ? "Linux" :
+      "Unknown OS";
+    const device =
+      /mobile|iphone|android/i.test(value) ? "Mobile device" :
+      /ipad|tablet/i.test(value) ? "Tablet" :
+      "Desktop browser";
+
+    return { browser, os, device };
+  }
+
+  function sessionTitle(session) {
+    if (session.current) return "This device";
+    const details = parseUserAgent(session.userAgent);
+    return `${details.browser} on ${details.os}`;
+  }
+
   async function load() {
     try {
       const { getDeviceSessions } = await import("../lib/accountApi.js");
@@ -526,30 +564,132 @@ function DevicesSection() {
       )}
       <Card className="overflow-hidden divide-y divide-slate-100 dark:divide-slate-800">
         {sessions.length ? (
-          sessions.map((session) => (
-            <div key={session.id} className="flex items-center gap-4 px-5 py-4">
-              <MonitorSmartphone size={18} className="text-slate-500" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-                  {session.current ? "This device" : session.userAgent}
-                </p>
-                <p className="text-xs text-slate-500">
-                  {session.current
-                    ? "Current session"
-                    : `Last active ${session.lastSeenAt ? new Date(session.lastSeenAt).toLocaleString() : "recently"}`}
-                </p>
+          sessions.map((session) => {
+            const details = parseUserAgent(session.userAgent);
+            const expanded = expandedId === session.id;
+
+            return (
+              <div key={session.id} className="px-5 py-4">
+                <div className="flex items-start gap-4">
+                  <MonitorSmartphone size={18} className="mt-1 text-slate-500" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                        {sessionTitle(session)}
+                      </p>
+                      {session.current && (
+                        <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 dark:bg-blue-500/10 dark:text-blue-400">
+                          Current
+                        </span>
+                      )}
+                      {session.revokedAt && (
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                          Revoked
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      {session.current
+                        ? "Current session on this device"
+                        : `Last active ${formatDateTime(session.lastSeenAt)}`}
+                    </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-4">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedId(expanded ? "" : session.id)
+                        }
+                        className="text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                      >
+                        {expanded ? "Hide details" : "View details"}
+                      </button>
+                      {!session.current && (
+                        <button
+                          onClick={() => revoke(session.id)}
+                          disabled={busy === session.id}
+                          className="text-xs font-medium text-blue-600 disabled:opacity-60"
+                        >
+                          {busy === session.id ? "Ending…" : "Sign out"}
+                        </button>
+                      )}
+                    </div>
+                    {expanded && (
+                      <dl className="mt-4 grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm dark:bg-slate-950/60 sm:grid-cols-2">
+                        <div>
+                          <dt className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                            Browser
+                          </dt>
+                          <dd className="mt-1 text-slate-900 dark:text-slate-100">
+                            {details.browser}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                            Operating system
+                          </dt>
+                          <dd className="mt-1 text-slate-900 dark:text-slate-100">
+                            {details.os}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                            Device type
+                          </dt>
+                          <dd className="mt-1 text-slate-900 dark:text-slate-100">
+                            {details.device}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                            Time zone
+                          </dt>
+                          <dd className="mt-1 text-slate-900 dark:text-slate-100">
+                            {session.timezone || "Not available"}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                            First seen
+                          </dt>
+                          <dd className="mt-1 text-slate-900 dark:text-slate-100">
+                            {formatDateTime(session.createdAt)}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                            Last active
+                          </dt>
+                          <dd className="mt-1 text-slate-900 dark:text-slate-100">
+                            {formatDateTime(session.lastSeenAt)}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                            Session status
+                          </dt>
+                          <dd className="mt-1 text-slate-900 dark:text-slate-100">
+                            {session.revokedAt
+                              ? `Revoked on ${formatDateTime(session.revokedAt)}`
+                              : session.current
+                                ? "Active on this device"
+                                : "Active"}
+                          </dd>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <dt className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                            Session ID
+                          </dt>
+                          <dd className="mt-1 break-all font-mono text-xs text-slate-700 dark:text-slate-300">
+                            {session.id}
+                          </dd>
+                        </div>
+                      </dl>
+                    )}
+                  </div>
+                </div>
               </div>
-              {!session.current && (
-                <button
-                  onClick={() => revoke(session.id)}
-                  disabled={busy === session.id}
-                  className="text-xs font-medium text-blue-600 disabled:opacity-60"
-                >
-                  {busy === session.id ? "Ending…" : "Sign out"}
-                </button>
-              )}
-            </div>
-          ))
+            );
+          })
         ) : (
           <div className="px-5 py-4 text-sm text-slate-500">
             No device sessions found yet.

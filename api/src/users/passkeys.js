@@ -3,15 +3,33 @@ import { db, FieldValue, Timestamp } from "../firebase.js";
 import { ApiError } from "../lib/errors.js";
 import { send } from "../lib/http.js";
 import { verifyBearerToken } from "../auth/security.js";
+import { config } from "../config.js";
 
 const b64 = (v) => Buffer.from(v).toString("base64url");
 const rpId = () =>
   process.env.WEBAUTHN_RP_ID ||
   new URL(process.env.ACCOUNT_ORIGIN || "http://localhost:5173").hostname;
-
-const origin = () => process.env.ACCOUNT_ORIGIN || "http://localhost:5173";
 const credentials = (uid) =>
   db.collection("users").doc(uid).collection("passkeys");
+const normalizeOrigin = (value) => {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
+};
+const allowedOrigins = () => {
+  const origins = new Set();
+  const configuredOrigin = normalizeOrigin(process.env.ACCOUNT_ORIGIN || "");
+
+  if (configuredOrigin) origins.add(configuredOrigin);
+  for (const value of config.corsOrigins) {
+    const origin = normalizeOrigin(value);
+    if (origin) origins.add(origin);
+  }
+
+  return origins;
+};
 
 export async function passkeyOptions(req, res) {
   const token = await verifyBearerToken(req);
@@ -70,11 +88,16 @@ export async function registerPasskey(req, res) {
   const clientData = JSON.parse(
     Buffer.from(clientDataJSON, "base64url").toString("utf8"),
   );
+  const clientOrigin = normalizeOrigin(clientData.origin);
+  const requestOrigin = normalizeOrigin(req.get("origin") || "");
+  const validOrigins = allowedOrigins();
   
   if (
     clientData.type !== "webauthn.create" ||
     clientData.challenge !== saved.challenge ||
-    clientData.origin !== origin()
+    !clientOrigin ||
+    !validOrigins.has(clientOrigin) ||
+    (requestOrigin && clientOrigin !== requestOrigin)
   )
     throw new ApiError("invalid_request", "Invalid passkey response.", 400);
   

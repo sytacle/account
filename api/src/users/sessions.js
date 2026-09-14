@@ -29,6 +29,7 @@ export async function listSessions(req, res) {
     const data = doc.data();
     return { id: doc.id, userAgent: data.userAgent || "Unknown device", timezone: data.timezone || null,
       createdAt: data.createdAt?.toDate?.().toISOString() || null, lastSeenAt: data.lastSeenAt?.toDate?.().toISOString() || null,
+      revokedAt: data.revokedAt?.toDate?.().toISOString() || null,
       current: doc.id === currentSessionId };
   }) });
 }
