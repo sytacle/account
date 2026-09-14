@@ -14,7 +14,7 @@ export async function authorize(req, res) {
     c = await getClient(b.client_id),
     s = scopes(b.scope);
   
-  if (!c || c.enabled) return oauthError(res, "invalid_client");
+  if (!c || c.enabled !== true) return oauthError(res, "invalid_client");
   if (!verifyRedirectUri(c, b.redirect_uri))
     return oauthError(
       res,
@@ -40,7 +40,7 @@ export async function authorize(req, res) {
   const code = randomToken(32);
   
   await db
-    .collection("oauth_codes")
+    .collection("oauthCodes")
     .doc(sha256(code))
     .create({
       uid: u.uid,

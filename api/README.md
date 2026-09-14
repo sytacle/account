@@ -33,6 +33,8 @@ Set these in Vercel Project Settings → Environment Variables:
 - `FIREBASE_PROJECT_ID`
 - `FIREBASE_CLIENT_EMAIL`
 - `FIREBASE_PRIVATE_KEY`
+- `CORS_ORIGINS` (optional comma-separated allowlist; defaults to the production
+  account site and Vite's local development origin)
 
 `FIREBASE_PRIVATE_KEY` may contain literal `\\n` sequences; the application converts them to newlines.
 
@@ -63,6 +65,10 @@ https://api.sytacle.com/v3/users/me
 ```
 
 ## Security notes
+
+The consent frontend calls the client lookup and authorization endpoints directly.
+Configure its `VITE_OAUTH_API_URL` value to this API's origin (for example,
+`https://api.sytacle.com`).
 
 The OAuth implementation retains the existing controls: Authorization Code + mandatory PKCE S256, exact redirect URI matching, short-lived single-use authorization codes, hashed opaque tokens, refresh-token rotation, refresh-family revocation, hashed confidential-client secrets, no-store OAuth responses, Helmet security headers, and rate limiting.
 

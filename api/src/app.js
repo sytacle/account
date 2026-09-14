@@ -8,11 +8,12 @@ import { userInfo } from "./oauth/userinfo.js";
 import { getProfile, updateProfile } from "./users/profile.js";
 import { verifyBearerToken } from "./auth/security.js";
 import { oauthError } from "./lib/http.js";
+import { config } from "./config.js";
 
 const app = express();
 
 app.disable("x-powered-by");
-app.set('trust proxy', 1);
+app.set("trust proxy", 1);
 
 app.use(
   helmet({
@@ -22,6 +23,18 @@ app.use(
 );
 app.use(express.json({ limit: "32kb" }));
 app.use(express.urlencoded({ extended: false, limit: "16kb" }));
+
+app.use((req, res, next) => {
+  const origin = req.get("origin");
+  if (origin && config.corsOrigins.has(origin)) {
+    res.set("Access-Control-Allow-Origin", origin);
+    res.set("Vary", "Origin");
+    res.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
+    res.set("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS");
+  }
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  return next();
+});
 
 const limiter = rateLimit({
   windowMs: 60_000,
@@ -42,6 +55,16 @@ app.post("/v3/oauth/revoke", revokeToken);
 app.get("/v3/oauth/clients/:clientId", publicClient);
 app.post("/v3/oauth/clients", createClient);
 app.get("/v3/oauth/userinfo", userInfo);
+
+// Small privileged health check retained from the Firebase version.
+app.get("/admin/check", async (req, res) => {
+  try {
+    await verifyBearerToken(req, true);
+    return res.json({ ok: true });
+  } catch {
+    return res.status(403).json({ error: "forbidden" });
+  }
+});
 app.get("/v3/users/me", getProfile);
 app.patch("/v3/users/me", updateProfile);
 
@@ -60,16 +83,6 @@ app.use((err, _req, res, _next) => {
     "Internal server error.",
     500,
   );
-});
-
-// Small privileged health check retained from the Firebase version.
-app.get("/admin/check", async (req, res) => {
-  try {
-    await verifyBearerToken(req, true);
-    return res.json({ ok: true });
-  } catch {
-    return res.status(403).json({ error: "forbidden" });
-  }
 });
 
 export default app;
