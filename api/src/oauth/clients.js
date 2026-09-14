@@ -15,7 +15,7 @@ export const verifyRedirectUri = (c, u) =>
   Array.isArray(c?.redirectUris) && c.redirectUris.includes(u);
 
 export function authenticateClient(req, b, c) {
-  if (!c || c.enabled) return false;
+  if (!c || c.enabled !== true) return false;
   if (c.public) return true;
   
   let id = b.client_id,
@@ -40,12 +40,15 @@ export function authenticateClient(req, b, c) {
 
 export async function publicClient(req, res) {
   const c = await getClient(req.params.clientId);
-  if (!c || c.enabled)
+  if (!c || c.enabled !== true)
     return oauthError(res, "invalid_client", "Unknown client.", 404);
   
   return send(res, 200, {
     client_id: c.id,
     client_name: c.name,
+    description: c.description || "",
+    logo_url: c.logoUrl || null,
+    privacy: c.privacy || null,
     redirect_uris: c.redirectUris,
     allowed_scopes: c.scopes,
     public_client: !!c.public,

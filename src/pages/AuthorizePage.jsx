@@ -7,11 +7,9 @@ import {
   ShieldCheck,
   X,
 } from "lucide-react";
-import { doc, getDoc } from "firebase/firestore";
 import Logo from "../components/Logo";
 import Spinner from "../components/Spinner";
 import { useAuth } from "../context/AuthContext";
-import { db } from "../config/firebase/firestore";
 
 const scopeLabels = {
   openid: ["Verify your identity", "Use your Sytacle Account to sign you in"],
@@ -26,10 +24,29 @@ const scopeLabels = {
   ],
 };
 
-function randomCode() {
-  return Array.from(crypto.getRandomValues(new Uint8Array(16)))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+const oauthApiBaseUrl = (
+  import.meta.env.VITE_OAUTH_API_URL || "https://api.sytacle.com"
+).replace(/\/+$/, "");
+
+async function oauthRequest(path, options = {}) {
+  const response = await fetch(`${oauthApiBaseUrl}${path}`, options);
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(body.error_description || body.error || "OAuth request failed.");
+  }
+  return body;
+}
+
+function normalizeClient(data) {
+  return {
+    id: data.client_id,
+    name: data.client_name,
+    description: data.description || "",
+    logoUrl: data.logo_url || undefined,
+    privacy: data.privacy || null,
+    redirectUris: data.redirect_uris,
+    scopes: data.allowed_scopes,
+  };
 }
 
 function isHttpUrl(value) {
@@ -44,21 +61,16 @@ function isHttpUrl(value) {
 function isValidClient(data, redirectUri) {
   if (
     !data ||
+    typeof data.id !== "string" ||
     typeof data.name !== "string" ||
     !data.name.trim() ||
     !Array.isArray(data.redirectUris) ||
-    data.enabled !== true
+    !Array.isArray(data.scopes)
   )
     return false;
   if (
     typeof data.description !== "string" ||
-    (data.logoUrl !== undefined && !isHttpUrl(data.logoUrl))
-  )
-    return false;
-  if (
-    !data.privacy ||
-    !isHttpUrl(data.privacy.policyUrl) ||
-    !isHttpUrl(data.privacy.termsUrl) ||
+    (data.logoUrl !== undefined && !isHttpUrl(data.logoUrl)) ||
     !isHttpUrl(redirectUri)
   )
     return false;
@@ -92,6 +104,7 @@ export default function AuthorizePage() {
   const { user, signOutUser } = useAuth();
   const navigate = useNavigate();
   const [busy, setBusy] = useState("");
+  const [requestError, setRequestError] = useState("");
   const [client, setClient] = useState(null);
   const [clientState, setClientState] = useState("loading");
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
@@ -99,6 +112,8 @@ export default function AuthorizePage() {
   const redirectUri = params.get("redirect_uri") || "";
   const responseType = params.get("response_type") || "code";
   const state = params.get("state") || "";
+  const codeChallenge = params.get("code_challenge") || "";
+  const codeChallengeMethod = params.get("code_challenge_method") || "";
   const requestedScopes = (params.get("scope") || "openid profile email")
     .split(/\s+/)
     .filter(Boolean);
@@ -107,14 +122,22 @@ export default function AuthorizePage() {
   useEffect(() => {
     let active = true;
     async function loadClient() {
-      if (!clientId || clientId.includes("/") || !redirectUri) {
+      if (
+        !clientId ||
+        clientId.includes("/") ||
+        !redirectUri ||
+        responseType !== "code" ||
+        !codeChallenge ||
+        codeChallengeMethod !== "S256"
+      ) {
         setClientState("invalid");
         return;
       }
       try {
-        const snapshot = await getDoc(doc(db, "clients", clientId));
+        const data = normalizeClient(
+          await oauthRequest(`/v3/oauth/clients/${encodeURIComponent(clientId)}`),
+        );
         if (!active) return;
-        const data = snapshot.exists() ? snapshot.data() : null;
         if (!isValidClient(data, redirectUri)) {
           setClientState("invalid");
           return;
@@ -147,18 +170,35 @@ export default function AuthorizePage() {
       );
     window.location.assign(url.toString());
   }
-  function handleAllow() {
+  async function handleAllow() {
     setBusy("allow");
-    if (responseType === "token")
-      redirectWith(
-        {
-          access_token: randomCode(),
-          token_type: "bearer",
-          ...(state && { state }),
+    setRequestError("");
+    try {
+      const idToken = await user.getIdToken();
+      const response = await oauthRequest("/v3/oauth/authorize", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+          "Content-Type": "application/json",
         },
-        true,
-      );
-    else redirectWith({ code: randomCode(), ...(state && { state }) });
+        body: JSON.stringify({
+          client_id: clientId,
+          redirect_uri: redirectUri,
+          response_type: responseType,
+          scope: requestedScopes.join(" "),
+          code_challenge: codeChallenge,
+          code_challenge_method: codeChallengeMethod,
+          ...(state && { state }),
+        }),
+      });
+      redirectWith({
+        code: response.code,
+        ...(response.state && { state: response.state }),
+      });
+    } catch (error) {
+      setRequestError(error.message || "Authorization could not be completed.");
+      setBusy("");
+    }
   }
   function handleCancel() {
     setBusy("cancel");
@@ -275,6 +315,14 @@ export default function AuthorizePage() {
                   share your password with this application.
                 </p>
               </div>
+              {requestError && (
+                <p
+                  className="mt-5 text-sm text-red-600 dark:text-red-400"
+                  role="alert"
+                >
+                  {requestError}
+                </p>
+              )}
               <div className="mt-6 grid grid-cols-2 gap-3">
                 <button
                   type="button"
@@ -306,25 +354,33 @@ export default function AuthorizePage() {
                 </button>
               </div>
               <div className="mt-6 border-t border-slate-100 pt-5 text-xs text-slate-400 dark:border-slate-800 dark:text-slate-500">
-                <p>
-                  <a
-                    href={client.privacy.policyUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:text-blue-600"
-                  >
-                    Privacy policy
-                  </a>{" "}
-                  ·{" "}
-                  <a
-                    href={client.privacy.termsUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:text-blue-600"
-                  >
-                    Terms of service
-                  </a>
-                </p>
+                {(client.privacy?.policyUrl || client.privacy?.termsUrl) && (
+                  <p>
+                    {client.privacy?.policyUrl && (
+                      <a
+                        href={client.privacy.policyUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="hover:text-blue-600"
+                      >
+                        Privacy policy
+                      </a>
+                    )}
+                    {client.privacy?.policyUrl && client.privacy?.termsUrl
+                      ? " · "
+                      : ""}
+                    {client.privacy?.termsUrl && (
+                      <a
+                        href={client.privacy.termsUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="hover:text-blue-600"
+                      >
+                        Terms of service
+                      </a>
+                    )}
+                  </p>
+                )}
                 <p className="mt-3">Requesting application ID</p>
                 <p className="mt-1 break-all font-mono text-[11px] text-slate-500 dark:text-slate-400">
                   {clientId}

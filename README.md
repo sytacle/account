@@ -55,22 +55,18 @@ npm run dev
 
 ### OAuth authorize demo
 
-`/oauth/authorize?client_id=demo-app&redirect_uri=https%3A%2F%2Facme.example%2Fcallback&response_type=code&scope=openid%20profile%20email&state=abc123`
+The consent screen uses the OAuth API for both client lookup and authorization.
+Set `VITE_OAUTH_API_URL` to that API's origin (it defaults to
+`https://api.sytacle.com`), then open a PKCE authorization request such as:
 
-Create `clients/demo-app` first using [`firebase/clients/demo-app.json`](firebase/clients/demo-app.json)
-and deploy [`firestore.rules`](firestore.rules), as described in `.env.example`.
-The consent page fetches that registered client document by ID; signed-in users
-can read a known document but cannot list or write the registry.
+`/oauth/authorize?client_id=demo-app&redirect_uri=https%3A%2F%2Facme.example%2Fcallback&response_type=code&scope=openid%20profile%20email&state=abc123&code_challenge=<S256_CHALLENGE>&code_challenge_method=S256`
 
-This screen shows the real signed-in Sytacle user and, on **Allow**, redirects
-the browser back to `redirect_uri` with a generated `code` (or a token in the
-hash, for `response_type=token`) and the original `state` — the same redirect
-leg a real authorization server performs. What it still can't do is act as a
-real authorization server: there's no backend here to register client apps,
-verify `redirect_uri` ownership, or exchange that code for a token, so the
-code isn't cryptographically meaningful. Wiring that up for real means adding
-a server (e.g. Cloud Functions) that owns client registration and token
-issuance.
+Create and enable `clients/demo-app` first using
+[`firebase/clients/demo-app.json`](firebase/clients/demo-app.json). On **Allow**,
+the page sends the Firebase ID token and authorization request to the API. The
+API verifies the enabled client, registered redirect URI, requested scopes, and
+PKCE challenge before returning a single-use authorization code for the browser
+to send to the registered `redirect_uri`.
 
 ## Production build
 

@@ -4,6 +4,12 @@ const n = (k, d) => {
 };
 export const config = {
   region: process.env.FUNCTIONS_REGION || "asia-southeast1",
+  corsOrigins: new Set(
+    (process.env.CORS_ORIGINS || "https://account.sytacle.com,http://localhost:5173")
+      .split(",")
+      .map((origin) => origin.trim())
+      .filter(Boolean),
+  ),
   oauth: {
     codeTtl: n("OAUTH_CODE_TTL_SECONDS", 300),
     accessTtl: n("OAUTH_ACCESS_TOKEN_TTL_SECONDS", 3600),
