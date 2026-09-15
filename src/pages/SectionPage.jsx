@@ -76,6 +76,13 @@ function PasskeysCard() {
         >
           {busy ? "Adding…" : "Add a passkey"}
         </button>
+        <Row
+          icon={KeyRound}
+          title="Chrome Android - Linux 2.3.0"
+          description="Added on September 15, 2026 at 7:05 AM UTC+8"
+          value="Manage"
+          onClick={() => navigate("/account/security/passkeys/cP876ktRE")}
+        />
         {notice && (
           <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
             {notice}
@@ -232,8 +239,14 @@ function SecuritySection() {
           icon={ShieldCheck}
           title="Two-factor authentication"
           description="Add an extra verification step to secure your account."
-          value={user?.multiFactor?.enrolledFactors?.length ? "Enabled" : "Not enabled"}
-          onClick={() => navigate("/account/security/two-factor-authentication")}
+          value={
+            user?.multiFactor?.enrolledFactors?.length
+              ? "Enabled"
+              : "Not enabled"
+          }
+          onClick={() =>
+            navigate("/account/security/two-factor-authentication")
+          }
         />
         <Row
           icon={Mail}
@@ -483,25 +496,35 @@ function DevicesSection() {
 
   function parseUserAgent(userAgent) {
     const value = userAgent || "";
-    const browser =
-      /edg\//i.test(value) ? "Microsoft Edge" :
-      /chrome\//i.test(value) && !/edg\//i.test(value) ? "Google Chrome" :
-      /firefox\//i.test(value) ? "Mozilla Firefox" :
-      /safari\//i.test(value) && !/chrome\//i.test(value) ? "Safari" :
-      /opr\//i.test(value) ? "Opera" :
-      "Unknown browser";
-    const os =
-      /windows nt 10/i.test(value) ? "Windows 10/11" :
-      /windows nt/i.test(value) ? "Windows" :
-      /android/i.test(value) ? "Android" :
-      /iphone|ipad|ipod/i.test(value) ? "iOS" :
-      /mac os x/i.test(value) ? "macOS" :
-      /linux/i.test(value) ? "Linux" :
-      "Unknown OS";
-    const device =
-      /mobile|iphone|android/i.test(value) ? "Mobile device" :
-      /ipad|tablet/i.test(value) ? "Tablet" :
-      "Desktop browser";
+    const browser = /edg\//i.test(value)
+      ? "Microsoft Edge"
+      : /chrome\//i.test(value) && !/edg\//i.test(value)
+        ? "Google Chrome"
+        : /firefox\//i.test(value)
+          ? "Mozilla Firefox"
+          : /safari\//i.test(value) && !/chrome\//i.test(value)
+            ? "Safari"
+            : /opr\//i.test(value)
+              ? "Opera"
+              : "Unknown browser";
+    const os = /windows nt 10/i.test(value)
+      ? "Windows 10/11"
+      : /windows nt/i.test(value)
+        ? "Windows"
+        : /android/i.test(value)
+          ? "Android"
+          : /iphone|ipad|ipod/i.test(value)
+            ? "iOS"
+            : /mac os x/i.test(value)
+              ? "macOS"
+              : /linux/i.test(value)
+                ? "Linux"
+                : "Unknown OS";
+    const device = /mobile|iphone|android/i.test(value)
+      ? "Mobile device"
+      : /ipad|tablet/i.test(value)
+        ? "Tablet"
+        : "Desktop browser";
 
     return { browser, os, device };
   }
@@ -549,7 +572,7 @@ function DevicesSection() {
       setBusy("");
     }
   }
-  
+
   return (
     <div className="max-w-3xl">
       <SectionHeader
@@ -571,7 +594,10 @@ function DevicesSection() {
             return (
               <div key={session.id} className="px-5 py-4">
                 <div className="flex items-start gap-4">
-                  <MonitorSmartphone size={18} className="mt-1 text-slate-500" />
+                  <MonitorSmartphone
+                    size={18}
+                    className="mt-1 text-slate-500"
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
@@ -791,6 +817,6 @@ export default function SectionPage({ type }) {
   if (type === "devices") return <DevicesSection />;
   if (type === "privacy" || type === "notifications")
     return <TogglesSection kind={type} />;
-  
+
   return <StaticSection type={type} />;
 }

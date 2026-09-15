@@ -1,4 +1,9 @@
-const API_BASE = (import.meta.env.VITE_ACCOUNT_API_URL || import.meta.env.VITE_OAUTH_API_URL || "https://api.sytacle.com").replace(/\/$/, "");
+const API_BASE = (
+  import.meta.env.VITE_ACCOUNT_API_URL ||
+  import.meta.env.VITE_OAUTH_API_URL ||
+  "https://api.sytacle.com"
+).replace(/\/$/, "");
+
 const SESSION_KEY = "sytacle.accountSessionId";
 
 export function getDeviceSessionId() {
@@ -22,8 +27,10 @@ async function request(user, path, options = {}) {
       ...options.headers,
     },
   });
+  
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error_description || data.error || "Request failed");
+  if (!response.ok)
+    throw new Error(data.error_description || data.error || "Request failed");
   return data;
 }
 
@@ -37,17 +44,57 @@ export function registerDeviceSession(user) {
     }),
   });
 }
-export const getDeviceSessions = (user) => request(user, "/v3/users/me/sessions");
+
+export const getDeviceSessions = (user) =>
+  request(user, "/v3/users/me/sessions");
+
 export const revokeDeviceSession = (user, sessionId) =>
-  request(user, `/v3/users/me/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
+  request(user, `/v3/users/me/sessions/${encodeURIComponent(sessionId)}`, {
+    method: "DELETE",
+  });
+
 export const revokeOtherDeviceSessions = (user) =>
   request(user, "/v3/users/me/sessions", { method: "DELETE" });
-const fromBase64 = (value) => Uint8Array.from(atob(value.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
-const toBase64 = (value) => btoa(String.fromCharCode(...new Uint8Array(value))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+const fromBase64 = (value) =>
+  Uint8Array.from(atob(value.replace(/-/g, "+").replace(/_/g, "/")), (c) =>
+    c.charCodeAt(0),
+  );
+
+const toBase64 = (value) =>
+  btoa(String.fromCharCode(...new Uint8Array(value)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
 
 export async function createPasskey(user) {
-  const options = await request(user, "/v3/users/me/passkeys/options", { method: "POST", body: "{}" });
-  const credential = await navigator.credentials.create({ publicKey: { ...options.publicKey, challenge: fromBase64(options.publicKey.challenge), user: { ...options.publicKey.user, id: fromBase64(options.publicKey.user.id) } } });
-  if (!credential?.response?.getPublicKey) throw new Error("This browser cannot export a passkey public key.");
-  return request(user, "/v3/users/me/passkeys", { method: "POST", body: JSON.stringify({ challengeId: options.challengeId, id: credential.id, rawId: toBase64(credential.rawId), clientDataJSON: toBase64(credential.response.clientDataJSON), publicKey: toBase64(credential.response.getPublicKey()) }) });
+  const options = await request(user, "/v3/users/me/passkeys/options", {
+    method: "POST",
+    body: "{}",
+  });
+  
+  const credential = await navigator.credentials.create({
+    publicKey: {
+      ...options.publicKey,
+      challenge: fromBase64(options.publicKey.challenge),
+      user: {
+        ...options.publicKey.user,
+        id: fromBase64(options.publicKey.user.id),
+      },
+    },
+  });
+  
+  if (!credential?.response?.getPublicKey)
+    throw new Error("This browser cannot export a passkey public key.");
+  
+  return request(user, "/v3/users/me/passkeys", {
+    method: "POST",
+    body: JSON.stringify({
+      challengeId: options.challengeId,
+      id: credential.id,
+      rawId: toBase64(credential.rawId),
+      clientDataJSON: toBase64(credential.response.clientDataJSON),
+      publicKey: toBase64(credential.response.getPublicKey()),
+    }),
+  });
 }

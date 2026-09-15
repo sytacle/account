@@ -39,11 +39,6 @@ function AccountLayout() {
         <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
         <main className="min-w-0 flex-1 px-4 py-7 sm:px-6 lg:px-10 lg:py-9">
           <div className="mx-auto max-w-6xl">
-            <div className="mb-7">
-              <p className="text-xs font-medium uppercase tracking-[0.16em] text-blue-600 dark:text-blue-400">Sytacle</p>
-              <h1 className="mt-1 text-3xl font-semibold tracking-tight text-slate-950 dark:text-white">{active === 'account' ? 'Account' : current?.label || 'Account'}</h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">Manage your information, security, and preferences across Sytacle.</p>
-            </div>
             {/*
               Inner Suspense boundary: keeps Header/Sidebar/chrome mounted
               while the account section chunk loads. Without this the outer
