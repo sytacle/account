@@ -53,4 +53,4 @@ jobs:
         run: |
           echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_SYTACLE }}' > "${HOME}/gcloud.json"
           export GOOGLE_APPLICATION_CREDENTIALS="${HOME}/gcloud.json"
-          firebase deploy --non-interactive --project=sytacle
+          firebase deploy --only hosting --non-interactive --project=sytacle

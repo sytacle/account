@@ -27,7 +27,7 @@ async function request(user, path, options = {}) {
       ...options.headers,
     },
   });
-  
+
   const data = await response.json().catch(() => ({}));
   if (!response.ok)
     throw new Error(data.error_description || data.error || "Request failed");
@@ -72,7 +72,7 @@ export async function createPasskey(user) {
     method: "POST",
     body: "{}",
   });
-  
+
   const credential = await navigator.credentials.create({
     publicKey: {
       ...options.publicKey,
@@ -83,10 +83,10 @@ export async function createPasskey(user) {
       },
     },
   });
-  
+
   if (!credential?.response?.getPublicKey)
     throw new Error("This browser cannot export a passkey public key.");
-  
+
   return request(user, "/v3/users/me/passkeys", {
     method: "POST",
     body: JSON.stringify({
@@ -98,3 +98,6 @@ export async function createPasskey(user) {
     }),
   });
 }
+
+export const getListPasskeys = (user) =>
+  request(user, "/v3/users/me/passkeys", { method: "GET" });
