@@ -7,6 +7,8 @@
 import { doc, getDoc, onSnapshot, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../config/firebase/firestore.js";
 
+const profileCache = new Map();
+
 export const DEFAULT_NOTIFICATION_PREFS = {
   "Project updates": true,
   Community: true,
@@ -32,8 +34,14 @@ function profileRef(uid) {
  */
 export async function ensureUserProfile(user) {
   const ref = profileRef(user.uid);
+  const cached = profileCache.get(user.uid);
+  if (cached) return cached;
   const snap = await getDoc(ref);
-  if (snap.exists()) return snap.data();
+  if (snap.exists()) {
+    const data = snap.data();
+    profileCache.set(user.uid, data);
+    return data;
+  }
 
   const seeded = {
     displayName: user.displayName || "",
@@ -46,15 +54,30 @@ export async function ensureUserProfile(user) {
     lastPasswordChangeAt: null,
   };
   await setDoc(ref, seeded);
+  profileCache.set(user.uid, seeded);
   return seeded;
 }
 
 export function subscribeToUserProfile(uid, onChange) {
   return onSnapshot(profileRef(uid), (snap) => {
-    onChange(snap.exists() ? snap.data() : null);
+    const data = snap.exists() ? snap.data() : null;
+    if (data) profileCache.set(uid, data);
+    else profileCache.delete(uid);
+    onChange(data);
   });
 }
 
 export async function updateUserProfileDoc(uid, partial) {
   await setDoc(profileRef(uid), partial, { merge: true });
+  const current = profileCache.get(uid) || {};
+  profileCache.set(uid, {
+    ...current,
+    ...partial,
+    ...(partial.notifications && {
+      notifications: { ...current.notifications, ...partial.notifications },
+    }),
+    ...(partial.privacy && {
+      privacy: { ...current.privacy, ...partial.privacy },
+    }),
+  });
 }

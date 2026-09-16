@@ -5,6 +5,19 @@ const API_BASE = (
 ).replace(/\/$/, "");
 
 const SESSION_KEY = "sytacle.accountSessionId";
+const responseCache = new Map();
+const CACHE_TTL = 15_000;
+
+function cacheKey(user, path) {
+  return `${user.uid}:${path}`;
+}
+
+function invalidateCache(user, pathPrefix = "") {
+  const prefix = `${user.uid}:${pathPrefix}`;
+  for (const key of responseCache.keys()) {
+    if (key.startsWith(prefix)) responseCache.delete(key);
+  }
+}
 
 export function getDeviceSessionId() {
   let id = localStorage.getItem(SESSION_KEY);
@@ -17,6 +30,15 @@ export function getDeviceSessionId() {
 
 async function request(user, path, options = {}) {
   if (!user) throw new Error("Not signed in");
+  const method = options.method || "GET";
+  const key = cacheKey(user, path);
+  if (method === "GET") {
+    const cached = responseCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) return cached.data;
+    responseCache.delete(key);
+  } else {
+    invalidateCache(user);
+  }
   const token = await user.getIdToken();
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
@@ -31,6 +53,9 @@ async function request(user, path, options = {}) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok)
     throw new Error(data.error_description || data.error || "Request failed");
+  if (method === "GET") {
+    responseCache.set(key, { data, expiresAt: Date.now() + CACHE_TTL });
+  }
   return data;
 }
 

@@ -139,6 +139,9 @@ async function issue(uid, cid, clientName, scope, res, familyId) {
   );
 
   if (!familyId) {
+    const profile = await db.collection("users").doc(uid).get();
+    const activityEnabled = profile.data()?.privacy?.["Activity controls"] !== false;
+    if (!activityEnabled) return commitTokenBatch(batch, res, access, refresh, scope);
     batch.set(db.collection("users").doc(uid).collection("activity").doc(), {
       type: "oauth_sign_in",
       clientId: cid,
@@ -147,9 +150,11 @@ async function issue(uid, cid, clientName, scope, res, familyId) {
       createdAt: timestamp,
     });
   }
-  
+  return commitTokenBatch(batch, res, access, refresh, scope);
+}
+
+async function commitTokenBatch(batch, res, access, refresh, scope) {
   await batch.commit();
-  
   return send(res, 200, {
     access_token: access,
     token_type: "Bearer",

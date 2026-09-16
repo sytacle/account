@@ -46,7 +46,9 @@ function AccountLayout() {
               boundary would blank the whole page on every section switch.
             */}
             <Suspense fallback={<RouteFallback />}>
-              {active === 'account' ? <AccountPage /> : active === 'edit' ? <EditAccountPage /> : <SectionPage type={active} />}
+              <div key={location.pathname} className="page-transition">
+                {active === 'account' ? <AccountPage /> : active === 'edit' ? <EditAccountPage /> : <SectionPage type={active} />}
+              </div>
             </Suspense>
           </div>
         </main>
