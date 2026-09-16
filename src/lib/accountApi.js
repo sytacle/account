@@ -66,6 +66,37 @@ export const revokeDeviceSession = (user, sessionId) =>
 export const revokeOtherDeviceSessions = (user) =>
   request(user, "/v3/users/me/sessions", { method: "DELETE" });
 
+export const getBilling = (user) => request(user, "/v3/users/me/billing");
+
+export const updateBilling = (user, billing) =>
+  request(user, "/v3/users/me/billing", {
+    method: "PATCH",
+    body: JSON.stringify(billing),
+  });
+
+export const getPaymentMethods = (user) =>
+  request(user, "/v3/users/me/billing/payment-methods");
+
+export const removePaymentMethod = (user, paymentMethodId) =>
+  request(
+    user,
+    `/v3/users/me/billing/payment-methods/${encodeURIComponent(paymentMethodId)}`,
+    { method: "DELETE" },
+  );
+
+export const getPurchases = (user) =>
+  request(user, "/v3/users/me/billing/purchases");
+
+export const getSubscriptions = (user) =>
+  request(user, "/v3/users/me/billing/subscriptions");
+
+export const cancelSubscription = (user, subscriptionId) =>
+  request(
+    user,
+    `/v3/users/me/billing/subscriptions/${encodeURIComponent(subscriptionId)}/cancel`,
+    { method: "POST", body: "{}" },
+  );
+
 const fromBase64 = (value) =>
   Uint8Array.from(atob(value.replace(/-/g, "+").replace(/_/g, "/")), (c) =>
     c.charCodeAt(0),

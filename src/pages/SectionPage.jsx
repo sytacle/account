@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Bell,
+  AppWindow,
   Cloud,
-  CreditCard,
   HelpCircle,
   KeyRound,
   Link2,
@@ -19,6 +19,7 @@ import FormNotice from "../components/FormNotice";
 import { useAuth } from "../context/AuthContext";
 import { oauthProviders } from "../data/account";
 import { friendlyAuthError } from "../lib/authErrors";
+import PaymentsSection from "./PaymentsSection";
 
 function SectionHeader({ icon: Icon, title, subtitle }) {
   return (
@@ -547,7 +548,7 @@ function TogglesSection({ kind }) {
   );
 }
 
-function DevicesSection() {
+function DevicesSection({ embedded = false }) {
   const { user } = useAuth();
   const [sessions, setSessions] = useState([]);
   const [error, setError] = useState("");
@@ -642,11 +643,13 @@ function DevicesSection() {
 
   return (
     <div className="max-w-3xl">
-      <SectionHeader
-        icon={MonitorSmartphone}
-        title="Devices"
-        subtitle="Review and end signed-in device sessions."
-      />
+      {!embedded && (
+        <SectionHeader
+          icon={MonitorSmartphone}
+          title="Sessions"
+          subtitle="Review signed-in devices and authorized applications."
+        />
+      )}
       {error && (
         <div className="mb-4">
           <FormNotice>{error}</FormNotice>
@@ -800,20 +803,146 @@ function DevicesSection() {
   );
 }
 
+function AuthorizedApplicationsSection({ embedded = false }) {
+  const { user } = useAuth();
+  const [sessions, setSessions] = useState([]);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState("");
+
+  async function load() {
+    try {
+      const { getAuthorizationSessions } = await import(
+        "../lib/accountApi.js"
+      );
+      const result = await getAuthorizationSessions(user);
+      setSessions(result.sessions || []);
+    } catch (err) {
+      setError(friendlyAuthError(err));
+    }
+  }
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  async function revoke(sessionId) {
+    setBusy(sessionId);
+    setError("");
+    try {
+      const { revokeAuthorizationSession } = await import(
+        "../lib/accountApi.js"
+      );
+      await revokeAuthorizationSession(user, sessionId);
+      const revokedSession = sessions.find((session) => session.id === sessionId);
+      setSessions((current) =>
+        current.filter(
+          (session) => session.clientId !== revokedSession?.clientId,
+        ),
+      );
+    } catch (err) {
+      setError(friendlyAuthError(err));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  return (
+    <div className="max-w-3xl">
+      {!embedded && (
+        <SectionHeader
+          icon={AppWindow}
+          title="Sessions"
+          subtitle="Review signed-in devices and authorized applications."
+        />
+      )}
+      {error && (
+        <div className="mb-4">
+          <FormNotice>{error}</FormNotice>
+        </div>
+      )}
+      <Card className="divide-y divide-slate-100 overflow-hidden dark:divide-slate-800">
+        {sessions.length ? (
+          sessions.map((session) => (
+            <div key={session.id} className="flex items-center gap-3 px-5 py-4">
+              {session.logoUrl ? (
+                <img
+                  src={session.logoUrl}
+                  alt=""
+                  className="size-10 rounded-xl object-cover"
+                />
+              ) : (
+                <div className="grid size-10 place-items-center rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400">
+                  <AppWindow size={18} />
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                  {session.clientName}
+                </p>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Signed in · {session.scope.join(", ") || "No scopes"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => revoke(session.id)}
+                disabled={busy === session.id}
+                className="shrink-0 text-xs font-medium text-rose-600 hover:text-rose-700 disabled:opacity-60 dark:text-rose-400 dark:hover:text-rose-300"
+              >
+                {busy === session.id ? "Revoking..." : "Revoke"}
+              </button>
+            </div>
+          ))
+        ) : (
+          <p className="px-5 py-4 text-sm text-slate-500 dark:text-slate-400">
+            No applications are authorized for your account.
+          </p>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+function SessionsSection() {
+  const [tab, setTab] = useState("devices");
+
+  return (
+    <div className="max-w-3xl">
+      <SectionHeader
+        icon={MonitorSmartphone}
+        title="Sessions"
+        subtitle="Review signed-in devices and authorized applications."
+      />
+      <div className="mb-5 flex gap-1 rounded-full bg-slate-100 p-1 dark:bg-slate-900">
+        {[
+          ["devices", "Devices"],
+          ["applications", "Applications"],
+        ].map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setTab(id)}
+            className={`flex-1 rounded-full px-4 py-2 text-sm font-medium transition ${tab === id ? "bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-slate-100" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"}`}
+            aria-pressed={tab === id}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {tab === "devices" ? (
+        <DevicesSection embedded />
+      ) : (
+        <AuthorizedApplicationsSection embedded />
+      )}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------
-// Remaining sections stay informational (no backend to make them live)
+// Remaining sections stay informational.
 // ---------------------------------------------------------------------
 const staticContent = {
-  payments: {
-    title: "Payments",
-    subtitle: "Manage payment methods and billing information.",
-    icon: CreditCard,
-    rows: [
-      ["Payment methods", "No payment methods added"],
-      ["Billing profile", "Manage billing details"],
-      ["Purchase history", "View Sytacle purchases and invoices"],
-    ],
-  },
   storage: {
     title: "Data & storage",
     subtitle: "Manage your data, storage, and downloads.",
@@ -871,7 +1000,8 @@ export default function SectionPage({ type }) {
   }
   if (type === "security") return <SecuritySection />;
   if (type === "linked") return <LinkedSection />;
-  if (type === "devices" || type === "sessions") return <DevicesSection />;
+  if (type === "devices" || type === "sessions") return <SessionsSection />;
+  if (type === "payments") return <PaymentsSection />;
   if (type === "privacy" || type === "notifications")
     return <TogglesSection kind={type} />;
 

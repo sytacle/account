@@ -13,6 +13,16 @@ import { getProfile, updateProfile } from "./users/profile.js";
 import { deletePasskey, listPasskeys, passkeyOptions, registerPasskey } from "./users/passkeys.js";
 import { listSessions, revokeOtherSessions, revokeSession, touchSession } from "./users/sessions.js";
 import { listAuthorizationSessions, revokeAuthorizationSession } from "./users/authorizationSessions.js";
+import {
+  addPaymentMethod,
+  cancelSubscription,
+  getBilling,
+  listPaymentMethods,
+  listPurchases,
+  listSubscriptions,
+  removePaymentMethod,
+  updateBilling,
+} from "./users/billing.js";
 import { verifyBearerToken } from "./auth/security.js";
 import { oauthError } from "./lib/http.js";
 import { config } from "./config.js";
@@ -114,6 +124,14 @@ app.delete("/v3/users/me/sessions", revokeOtherSessions);
 app.delete("/v3/users/me/sessions/:sessionId", revokeSession);
 app.get("/v3/users/me/authorization-sessions", listAuthorizationSessions);
 app.delete("/v3/users/me/authorization-sessions/:sessionId", revokeAuthorizationSession);
+app.get("/v3/users/me/billing", getBilling);
+app.patch("/v3/users/me/billing", updateBilling);
+app.get("/v3/users/me/billing/payment-methods", listPaymentMethods);
+app.post("/v3/users/me/billing/payment-methods", addPaymentMethod);
+app.delete("/v3/users/me/billing/payment-methods/:paymentMethodId", removePaymentMethod);
+app.get("/v3/users/me/billing/purchases", listPurchases);
+app.get("/v3/users/me/billing/subscriptions", listSubscriptions);
+app.post("/v3/users/me/billing/subscriptions/:subscriptionId/cancel", cancelSubscription);
 
 app.use((req, res) =>
   oauthError(res, "not_found", `No route for ${req.method} ${req.path}.`, 404),
