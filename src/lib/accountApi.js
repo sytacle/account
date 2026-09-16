@@ -51,6 +51,13 @@ export const getDeviceSessions = (user) =>
 export const getAuthorizationSessions = (user) =>
   request(user, "/v3/users/me/authorization-sessions");
 
+export const revokeAuthorizationSession = (user, sessionId) =>
+  request(
+    user,
+    `/v3/users/me/authorization-sessions/${encodeURIComponent(sessionId)}`,
+    { method: "DELETE" },
+  );
+
 export const revokeDeviceSession = (user, sessionId) =>
   request(user, `/v3/users/me/sessions/${encodeURIComponent(sessionId)}`, {
     method: "DELETE",

@@ -24,6 +24,7 @@ Firebase Auth blocking triggers such as `beforeUserCreated` and `beforeUserSigne
 - `GET|POST|DELETE /v3/users/me/sessions`
 - `DELETE /v3/users/me/sessions/:sessionId`
 - `GET /v3/users/me/authorization-sessions`
+- `DELETE /v3/users/me/authorization-sessions/:sessionId`
 - `GET /health`
 - `GET /admin/check` (Firebase admin token required)
 

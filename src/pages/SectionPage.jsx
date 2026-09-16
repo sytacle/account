@@ -871,7 +871,7 @@ export default function SectionPage({ type }) {
   }
   if (type === "security") return <SecuritySection />;
   if (type === "linked") return <LinkedSection />;
-  if (type === "devices") return <DevicesSection />;
+  if (type === "devices" || type === "sessions") return <DevicesSection />;
   if (type === "privacy" || type === "notifications")
     return <TogglesSection kind={type} />;
 

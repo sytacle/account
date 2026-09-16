@@ -12,7 +12,7 @@ import { userInfo } from "./oauth/userinfo.js";
 import { getProfile, updateProfile } from "./users/profile.js";
 import { deletePasskey, listPasskeys, passkeyOptions, registerPasskey } from "./users/passkeys.js";
 import { listSessions, revokeOtherSessions, revokeSession, touchSession } from "./users/sessions.js";
-import { listAuthorizationSessions } from "./users/authorizationSessions.js";
+import { listAuthorizationSessions, revokeAuthorizationSession } from "./users/authorizationSessions.js";
 import { verifyBearerToken } from "./auth/security.js";
 import { oauthError } from "./lib/http.js";
 import { config } from "./config.js";
@@ -113,6 +113,7 @@ app.post("/v3/users/me/sessions", touchSession);
 app.delete("/v3/users/me/sessions", revokeOtherSessions);
 app.delete("/v3/users/me/sessions/:sessionId", revokeSession);
 app.get("/v3/users/me/authorization-sessions", listAuthorizationSessions);
+app.delete("/v3/users/me/authorization-sessions/:sessionId", revokeAuthorizationSession);
 
 app.use((req, res) =>
   oauthError(res, "not_found", `No route for ${req.method} ${req.path}.`, 404),

@@ -6,6 +6,7 @@ import {
   Link2,
   LockKeyhole,
   MonitorSmartphone,
+  ListRestart,
   Shield,
   UserRound,
 } from 'lucide-react'
@@ -16,6 +17,7 @@ export const navItems = [
   { id: 'privacy', label: 'Privacy', icon: LockKeyhole },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'devices', label: 'Devices', icon: MonitorSmartphone },
+  { id: 'sessions', label: 'Sessions', icon: ListRestart },
   { id: 'linked', label: 'Linked accounts', icon: Link2 },
   { id: 'payments', label: 'Payments', icon: CreditCard },
   { id: 'storage', label: 'Data & storage', icon: Cloud },

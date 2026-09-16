@@ -354,6 +354,7 @@ function AuthorizationCard() {
   const { user } = useAuth();
   const [sessions, setSessions] = useState([]);
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -373,6 +374,27 @@ function AuthorizationCard() {
       active = false;
     };
   }, [user]);
+
+  async function revoke(sessionId) {
+    setBusy(sessionId);
+    setError("");
+    try {
+      const { revokeAuthorizationSession } = await import(
+        "../lib/accountApi.js"
+      );
+      await revokeAuthorizationSession(user, sessionId);
+      const revokedSession = sessions.find((session) => session.id === sessionId);
+      setSessions((current) =>
+        current.filter(
+          (session) => session.clientId !== revokedSession?.clientId,
+        ),
+      );
+    } catch (err) {
+      setError(friendlyAuthError(err));
+    } finally {
+      setBusy("");
+    }
+  }
 
   return (
     <Card>
@@ -410,6 +432,14 @@ function AuthorizationCard() {
               <span className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
                 Active
               </span>
+              <button
+                type="button"
+                onClick={() => revoke(session.id)}
+                disabled={busy === session.id}
+                className="shrink-0 text-xs font-medium text-rose-600 hover:text-rose-700 disabled:opacity-60 dark:text-rose-400 dark:hover:text-rose-300"
+              >
+                {busy === session.id ? "Revoking..." : "Revoke"}
+              </button>
             </div>
           ))}
         </div>
