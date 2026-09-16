@@ -55,7 +55,7 @@ async function code(b, c, res) {
     return oauthError(res, "invalid_grant");
   }
   
-  return issue(d.uid, c.id, d.scope, res);
+  return issue(d.uid, c.id, c.name, d.scope, res);
 }
 
 async function refresh(b, c, res) {
@@ -93,14 +93,15 @@ async function refresh(b, c, res) {
     return oauthError(res, "invalid_grant");
   }
   
-  return issue(d.uid, c.id, d.scope, res, d.familyId);
+  return issue(d.uid, c.id, c.name, d.scope, res, d.familyId);
 }
 
-async function issue(uid, cid, scope, res, familyId) {
+async function issue(uid, cid, clientName, scope, res, familyId) {
   const family = familyId || randomToken(24),
     access = randomToken(),
     refresh = randomToken(64),
     now = Date.now(),
+    timestamp = Timestamp.now(),
     batch = db.batch();
   
   batch.set(db.collection("oauthAccessTokens").doc(sha256(access)), {
@@ -109,7 +110,7 @@ async function issue(uid, cid, scope, res, familyId) {
     scope,
     familyId: family,
     expiresAt: Timestamp.fromMillis(now + config.oauth.accessTtl * 1000),
-    createdAt: Timestamp.now(),
+    createdAt: timestamp,
   });
   
   batch.set(db.collection("oauthRefreshTokens").doc(sha256(refresh)), {
@@ -130,11 +131,22 @@ async function issue(uid, cid, scope, res, familyId) {
       scope,
       revoked: false,
       expiresAt: Timestamp.fromMillis(now + config.oauth.refreshTtl * 1000),
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      lastUsedAt: timestamp,
     },
     { merge: true },
   );
+
+  if (!familyId) {
+    batch.set(db.collection("users").doc(uid).collection("activity").doc(), {
+      type: "oauth_sign_in",
+      clientId: cid,
+      clientName: clientName || "Unknown application",
+      familyId: family,
+      createdAt: timestamp,
+    });
+  }
   
   await batch.commit();
   

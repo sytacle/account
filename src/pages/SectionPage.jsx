@@ -818,9 +818,15 @@ function DevicesSection({ embedded = false }) {
 
 function AuthorizedApplicationsSection({ embedded = false }) {
   const { user } = useAuth();
-  const [sessions, setSessions] = useState([]);
+  const [applications, setApplications] = useState([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
+  const [expandedId, setExpandedId] = useState("");
+
+  function formatDateTime(value) {
+    if (!value) return "Not available";
+    return new Date(value).toLocaleString();
+  }
 
   async function load() {
     try {
@@ -828,7 +834,7 @@ function AuthorizedApplicationsSection({ embedded = false }) {
         "../lib/accountApi.js"
       );
       const result = await getAuthorizationSessions(user);
-      setSessions(result.sessions || []);
+      setApplications(result.applications || []);
     } catch (err) {
       setError(friendlyAuthError(err));
     }
@@ -847,12 +853,7 @@ function AuthorizedApplicationsSection({ embedded = false }) {
         "../lib/accountApi.js"
       );
       await revokeAuthorizationSession(user, sessionId);
-      const revokedSession = sessions.find((session) => session.id === sessionId);
-      setSessions((current) =>
-        current.filter(
-          (session) => session.clientId !== revokedSession?.clientId,
-        ),
-      );
+      await load();
     } catch (err) {
       setError(friendlyAuthError(err));
     } finally {
@@ -875,38 +876,71 @@ function AuthorizedApplicationsSection({ embedded = false }) {
         </div>
       )}
       <Card className="divide-y divide-slate-100 overflow-hidden dark:divide-slate-800">
-        {sessions.length ? (
-          sessions.map((session) => (
-            <div key={session.id} className="flex items-center gap-3 px-5 py-4">
-              {session.logoUrl ? (
-                <img
-                  src={session.logoUrl}
-                  alt=""
-                  className="size-10 rounded-xl object-cover"
-                />
-              ) : (
-                <div className="grid size-10 place-items-center rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400">
-                  <AppWindow size={18} />
+        {applications.length ? (
+          applications.map((application) => {
+            const expanded = expandedId === application.clientId;
+            const recentSession = application.sessions[0];
+            return (
+              <div key={application.clientId} className="px-5 py-4">
+                <div className="flex items-center gap-3">
+                  {application.logoUrl ? (
+                    <img
+                      src={application.logoUrl}
+                      alt=""
+                      className="size-10 rounded-xl object-cover"
+                    />
+                  ) : (
+                    <div className="grid size-10 place-items-center rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400">
+                      <AppWindow size={18} />
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                      {application.clientName} ({application.count})
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="size-1.5 rounded-full bg-emerald-500" />
+                        Active · Last signed in {formatDateTime(recentSession.lastUsedAt)}
+                      </span>
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedId(expanded ? "" : application.clientId)}
+                    className="shrink-0 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                  >
+                    {expanded ? "Hide sign-ins" : "Show sign-ins"}
+                  </button>
                 </div>
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-                  {session.clientName}
-                </p>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  Signed in · {session.scope.join(", ") || "No scopes"}
-                </p>
+                {expanded && (
+                  <div className="mt-4 space-y-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+                    {application.sessions.map((session) => (
+                      <div key={session.id} className="flex items-center gap-3 pl-2">
+                        <span className="size-2 shrink-0 rounded-full bg-emerald-500" aria-label="Active" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-medium text-slate-800 dark:text-slate-200">
+                            Signed in {formatDateTime(session.lastUsedAt)}
+                          </p>
+                          <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
+                            {session.scope.join(", ") || "No scopes"}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => revoke(session.id)}
+                          disabled={busy === session.id}
+                          className="shrink-0 text-xs font-medium text-rose-600 hover:text-rose-700 disabled:opacity-60 dark:text-rose-400"
+                        >
+                          {busy === session.id ? "Revoking..." : "Revoke"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <button
-                type="button"
-                onClick={() => revoke(session.id)}
-                disabled={busy === session.id}
-                className="shrink-0 text-xs font-medium text-rose-600 hover:text-rose-700 disabled:opacity-60 dark:text-rose-400 dark:hover:text-rose-300"
-              >
-                {busy === session.id ? "Revoking..." : "Revoke"}
-              </button>
-            </div>
-          ))
+            );
+          })
         ) : (
           <p className="px-5 py-4 text-sm text-slate-500 dark:text-slate-400">
             No applications are authorized for your account.

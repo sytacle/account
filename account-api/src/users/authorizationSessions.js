@@ -18,7 +18,7 @@ export async function listAuthorizationSessions(req, res) {
       (!data.expiresAt || data.expiresAt.toMillis?.() > Date.now())
     );
   });
-  const clients = await Promise.all(
+  const sessions = await Promise.all(
     active.map(async (doc) => {
       const data = doc.data();
       const client = await db.collection("clients").doc(data.clientId).get();
@@ -30,11 +30,43 @@ export async function listAuthorizationSessions(req, res) {
         scope: Array.isArray(data.scope) ? data.scope : [],
         createdAt: data.createdAt?.toDate?.().toISOString() || null,
         updatedAt: data.updatedAt?.toDate?.().toISOString() || null,
+        lastUsedAt: data.lastUsedAt?.toDate?.().toISOString() || null,
         expiresAt: data.expiresAt?.toDate?.().toISOString() || null,
       };
     }),
   );
-  return send(res, 200, { sessions: clients });
+  const applications = [
+    ...sessions
+      .reduce((groups, session) => {
+        const application = groups.get(session.clientId) || {
+          clientId: session.clientId,
+          clientName: session.clientName,
+          logoUrl: session.logoUrl,
+          count: 0,
+          sessions: [],
+        };
+        application.count += 1;
+        application.sessions.push(session);
+        application.sessions.sort(
+          (a, b) =>
+            (Date.parse(b.lastUsedAt || "") || 0) -
+            (Date.parse(a.lastUsedAt || "") || 0),
+        );
+        groups.set(session.clientId, application);
+        return groups;
+      }, new Map())
+      .values(),
+  ].sort((a, b) => {
+    const aLastUsed = Math.max(
+      ...a.sessions.map((session) => Date.parse(session.lastUsedAt || "") || 0),
+    );
+    const bLastUsed = Math.max(
+      ...b.sessions.map((session) => Date.parse(session.lastUsedAt || "") || 0),
+    );
+    return bLastUsed - aLastUsed;
+  });
+
+  return send(res, 200, { applications });
 }
 
 export async function revokeAuthorizationSession(req, res) {
