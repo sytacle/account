@@ -15,6 +15,7 @@ import { listSessions, revokeOtherSessions, revokeSession, touchSession } from "
 import { listAuthorizationSessions, revokeAuthorizationSession } from "./users/authorizationSessions.js";
 import {
   addPaymentMethod,
+  activateBillingAccount,
   cancelSubscription,
   createBilling,
   getBilling,
@@ -23,6 +24,7 @@ import {
   listSubscriptions,
   removePaymentMethod,
   updateBilling,
+  updateBillingAccount,
 } from "./users/billing.js";
 import {
   createItem,
@@ -145,6 +147,8 @@ app.delete("/v3/users/me/authorization-sessions/:sessionId", revokeAuthorization
 app.get("/v3/users/me/billing", getBilling);
 app.post("/v3/users/me/billing", createBilling);
 app.patch("/v3/users/me/billing", updateBilling);
+app.patch("/v3/users/me/billing/accounts/:accountId", updateBillingAccount);
+app.post("/v3/users/me/billing/accounts/:accountId/activate", activateBillingAccount);
 app.get("/v3/users/me/billing/payment-methods", listPaymentMethods);
 app.post("/v3/users/me/billing/payment-methods", addPaymentMethod);
 app.delete("/v3/users/me/billing/payment-methods/:paymentMethodId", removePaymentMethod);

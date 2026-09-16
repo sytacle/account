@@ -20,6 +20,14 @@ function billingRef(uid) {
   return db.collection("users").doc(uid).collection("billing").doc("account");
 }
 
+function billingAccounts(uid) {
+  return db.collection("users").doc(uid).collection("billing").collection("accounts");
+}
+
+function activeBillingRef(uid) {
+  return db.collection("users").doc(uid).collection("billing").doc("settings");
+}
+
 function userCollection(uid, name) {
   return db.collection("users").doc(uid).collection("billing").doc("account").collection(name);
 }
@@ -73,12 +81,55 @@ function serializeSubscription(doc) {
   };
 }
 
+function serializeBillingAccount(doc, activeAccountId) {
+  const account = doc.data();
+  return {
+    id: doc.id,
+    name: account.name || "",
+    email: account.email || "",
+    addressLine1: account.addressLine1 || "",
+    addressLine2: account.addressLine2 || "",
+    city: account.city || "",
+    state: account.state || "",
+    postalCode: account.postalCode || "",
+    country: account.country || "",
+    taxId: account.taxId || "",
+    isActive: doc.id === activeAccountId,
+  };
+}
+
+function billingInput(token, body) {
+  const account = { name: token.name || "", email: token.email || "" };
+  for (const field of billingFields) {
+    if (body[field] === undefined) continue;
+    if (typeof body[field] !== "string" || body[field].length > 256)
+      throw new ApiError("invalid_request", `Invalid billing field: ${field}.`, 400);
+    account[field] = body[field].trim();
+  }
+  if (!account.name || !account.email)
+    throw new ApiError("invalid_request", "Name and billing email are required.", 400);
+  return account;
+}
+
+async function activeAccountId(uid, accounts) {
+  const settings = await activeBillingRef(uid).get();
+  if (settings.exists && accounts.some((account) => account.id === settings.data().activeAccountId))
+    return settings.data().activeAccountId;
+  return accounts[0]?.id || null;
+}
+
 export async function getBilling(req, res) {
   const token = await verifyBearerToken(req);
-  const snapshot = await billingRef(token.uid).get();
-  const account = snapshot.exists ? snapshot.data() : {};
+  const accountsSnapshot = await billingAccounts(token.uid).get();
+  let accounts = accountsSnapshot.docs;
+  const legacy = await billingRef(token.uid).get();
+  if (legacy.exists) accounts = [legacy, ...accounts];
+  const activeId = await activeAccountId(token.uid, accounts);
+  const account = accounts.find((item) => item.id === activeId)?.data() || {};
   return send(res, 200, {
-    exists: snapshot.exists,
+    exists: accounts.length > 0,
+    activeAccountId: activeId,
+    accounts: accounts.map((item) => serializeBillingAccount(item, activeId)),
     billing: {
       name: account.name || "",
       email: account.email || token.email || "",
@@ -95,35 +146,23 @@ export async function getBilling(req, res) {
 
 export async function createBilling(req, res) {
   const token = await requirePasskeyVerification(req);
-  const ref = billingRef(token.uid);
-  const snapshot = await ref.get();
-  if (snapshot.exists)
-    throw new ApiError("conflict", "A billing account already exists.", 409);
-
-  const body = req.body || {};
-  const account = {
-    name: token.name || "",
-    email: token.email || "",
-  };
-  for (const field of billingFields) {
-    if (body[field] === undefined) continue;
-    if (typeof body[field] !== "string" || body[field].length > 256)
-      throw new ApiError("invalid_request", `Invalid billing field: ${field}.`, 400);
-    account[field] = body[field].trim();
-  }
-  if (!account.name || !account.email)
-    throw new ApiError("invalid_request", "Name and billing email are required.", 400);
-
+  const ref = billingAccounts(token.uid).doc();
+  const account = billingInput(token, req.body || {});
   await ref.create({
     ...account,
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
   });
-  return send(res, 201, { ok: true });
+  const existing = await billingAccounts(token.uid).get();
+  if (existing.size === 1)
+    await activeBillingRef(token.uid).set({ activeAccountId: ref.id }, { merge: true });
+  return send(res, 201, { account: serializeBillingAccount(await ref.get(), ref.id) });
 }
 
 export async function updateBilling(req, res) {
   const token = await requirePasskeyVerification(req);
+  const activeId = (await activeBillingRef(token.uid).get()).data()?.activeAccountId;
+  if (activeId && activeId !== "account") return updateBillingAccountFields(req, res, token, activeId);
   const update = {};
   for (const field of billingFields) {
     if (req.body?.[field] === undefined) continue;
@@ -139,6 +178,39 @@ export async function updateBilling(req, res) {
     { merge: true },
   );
   return send(res, 200, { ok: true });
+}
+
+export async function updateBillingAccount(req, res) {
+  const token = await requirePasskeyVerification(req);
+  return updateBillingAccountFields(req, res, token, req.params.accountId);
+}
+
+async function updateBillingAccountFields(req, res, token, accountId) {
+  const ref = accountId === "account"
+    ? billingRef(token.uid)
+    : billingAccounts(token.uid).doc(String(accountId || ""));
+  const snapshot = await ref.get();
+  if (!snapshot.exists) throw new ApiError("not_found", "Billing account not found.", 404);
+  const update = {};
+  for (const field of billingFields) {
+    if (req.body?.[field] === undefined) continue;
+    if (typeof req.body[field] !== "string" || req.body[field].length > 256)
+      throw new ApiError("invalid_request", `Invalid billing field: ${field}.`, 400);
+    update[field] = req.body[field].trim();
+  }
+  if (!Object.keys(update).length)
+    throw new ApiError("invalid_request", "At least one billing field is required.", 400);
+  await ref.set({ ...update, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  return send(res, 200, { account: serializeBillingAccount(await ref.get(), accountId) });
+}
+
+export async function activateBillingAccount(req, res) {
+  const token = await requirePasskeyVerification(req);
+  const accountId = String(req.params.accountId || "");
+  const snapshot = await billingAccounts(token.uid).doc(accountId).get();
+  if (!snapshot.exists) throw new ApiError("not_found", "Billing account not found.", 404);
+  await activeBillingRef(token.uid).set({ activeAccountId: accountId, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  return send(res, 200, { activeAccountId: accountId });
 }
 
 export async function listPaymentMethods(req, res) {

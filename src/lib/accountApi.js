@@ -130,6 +130,20 @@ export const updateBilling = (user, billing) =>
     body: JSON.stringify(billing),
   });
 
+export const updateBillingAccount = (user, accountId, billing) =>
+  requestWithPasskey(
+    user,
+    `/v3/users/me/billing/accounts/${encodeURIComponent(accountId)}`,
+    { method: "PATCH", body: JSON.stringify(billing) },
+  );
+
+export const activateBillingAccount = (user, accountId) =>
+  requestWithPasskey(
+    user,
+    `/v3/users/me/billing/accounts/${encodeURIComponent(accountId)}/activate`,
+    { method: "POST", body: "{}" },
+  );
+
 export const getPaymentMethods = (user) =>
   request(user, "/v3/users/me/billing/payment-methods");
 
