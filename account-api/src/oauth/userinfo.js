@@ -3,27 +3,89 @@ import { verifyOAuthAccessToken } from "./resource.js";
 import { send } from "../lib/http.js";
 
 export async function userInfo(req, res) {
-  const t = await verifyOAuthAccessToken(req),
-    u = await auth.getUser(t.uid),
-    s = new Set(t.scope || []),
-    b = { sub: u.uid };
-  
+  const t = await verifyOAuthAccessToken(req);
+
+  const u = await auth.getUser(t.uid);
+
+  // OAuth scope can be:
+  // "openid profile email account phone"
+  // or an array depending on your token implementation.
+  const rawScope = t.scope ?? t.scopes;
+
+  const scopes = Array.isArray(rawScope)
+    ? rawScope
+    : typeof rawScope === "string"
+      ? rawScope.trim().split(/\s+/).filter(Boolean)
+      : [];
+
+  const s = new Set(scopes);
+
+  const b = {
+    sub: u.uid,
+  };
+
+  /*
+   * PROFILE
+   */
   if (s.has("profile")) {
-    b.name = u.displayName || undefined;
-    b.picture = u.photoURL || undefined;
+    if (u.displayName) {
+      b.name = u.displayName;
+    }
+
+    if (u.photoURL) {
+      b.picture = u.photoURL;
+    }
   }
-  
+
+  /*
+   * EMAIL
+   */
   if (s.has("email")) {
-    b.email = u.email || undefined;
+    if (u.email) {
+      b.email = u.email;
+    }
+
     b.email_verified = !!u.emailVerified;
   }
-  
-  const p = await db.collection("users").doc(u.uid).get();
-  if (p.exists && s.has("profile")) {
-    const x = p.data();
-    if (x.locale) b.locale = x.locale;
-    if (x.timezone) b.zoneinfo = x.timezone;
+
+  /*
+   * PHONE
+   */
+  if (s.has("phone")) {
+    if (u.phoneNumber) {
+      b.phone = u.phoneNumber;
+    }
+
+    b.phone_verified = u.customClaims?.phoneVerified === true;
   }
-  
+
+  /*
+   * ACCOUNT
+   */
+  if (s.has("account")) {
+    b.admin = u.customClaims?.admin === true;
+    b.role = u.customClaims?.role || undefined;
+    b.subscription = u.customClaims?.subscription || undefined;
+  }
+
+  /*
+   * FIRESTORE PROFILE
+   */
+  if (s.has("profile")) {
+    const p = await db.collection("users").doc(u.uid).get();
+
+    if (p.exists) {
+      const x = p.data() || {};
+
+      if (x.locale) {
+        b.locale = x.locale;
+      }
+
+      if (x.timezone) {
+        b.zoneinfo = x.timezone;
+      }
+    }
+  }
+
   return send(res, 200, b);
 }
