@@ -25,14 +25,16 @@ const scopeLabels = {
 };
 
 const oauthApiBaseUrl = (
-  import.meta.env.VITE_OAUTH_API_URL || "https://api.sytacle.com"
+  import.meta.env.VITE_OAUTH_API_URL || "https://api.account.sytacle.com"
 ).replace(/\/+$/, "");
 
 async function oauthRequest(path, options = {}) {
   const response = await fetch(`${oauthApiBaseUrl}${path}`, options);
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(body.error_description || body.error || "OAuth request failed.");
+    throw new Error(
+      body.error_description || body.error || "OAuth request failed.",
+    );
   }
   return body;
 }
@@ -59,13 +61,20 @@ function isHttpUrl(value) {
 }
 
 function isValidClient(data, redirectUri) {
+  const scopes = Array.isArray(data.scopes)
+    ? data.scopes
+    : typeof data.scopes === "string"
+      ? data.scopes.trim().split(/\s+/).filter(Boolean)
+      : null;
+
   if (
     !data ||
     typeof data.id !== "string" ||
     typeof data.name !== "string" ||
     !data.name.trim() ||
     !Array.isArray(data.redirectUris) ||
-    !Array.isArray(data.scopes)
+    !scopes ||
+    scopes.length === 0
   )
     return false;
   if (
@@ -135,7 +144,9 @@ export default function AuthorizePage() {
       }
       try {
         const data = normalizeClient(
-          await oauthRequest(`/v3/oauth/clients/${encodeURIComponent(clientId)}`),
+          await oauthRequest(
+            `/v3/oauth/clients/${encodeURIComponent(clientId)}`,
+          ),
         );
         if (!active) return;
         if (!isValidClient(data, redirectUri)) {

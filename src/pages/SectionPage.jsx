@@ -49,6 +49,7 @@ function PasskeysCard() {
   const [busy, setBusy] = useState(false);
   const [passkeys, setPasskeys] = useState([]);
   const [loadError, setLoadError] = useState("");
+  const [loadingPasskeys, setLoadingPasskeys] = useState(true);
   const supportsPasskeys =
     typeof window !== "undefined" && Boolean(window.PublicKeyCredential);
 
@@ -56,9 +57,11 @@ function PasskeysCard() {
     try {
       const { getListPasskeys } = await import("../lib/accountApi.js");
       const result = await getListPasskeys(user);
-      setPasskeys(result || []);
+      setPasskeys(result.passkeys || []);
     } catch (err) {
       setLoadError(friendlyAuthError(err));
+    } finally {
+      setLoadingPasskeys(false);
     }
   }
 
@@ -106,19 +109,34 @@ function PasskeysCard() {
           </p>
         )}
 
-        {passkeys.length > 0 && (
+        {loadingPasskeys ? (
+          <div className="mt-4 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <Spinner size={14} />
+            Loading passkeys…
+          </div>
+        ) : passkeys.length > 0 ? (
           <div className="mt-4 divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-100 dark:divide-slate-800 dark:border-slate-800">
             {passkeys.map((key) => (
               <Row
                 key={key.id}
                 icon={KeyRound}
                 title={key.id}
-                description={key.createdAt}
+                description={
+                  "Added on " +
+                  new Date(key.createdAt).toLocaleString("en-US", {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })
+                }
                 value="Manage"
                 onClick={() => navigate(`/account/security/passkeys/${key.id}`)}
               />
             ))}
           </div>
+        ) : (
+          <p className="mt-4 text-xs text-slate-500 dark:text-slate-400">
+            No passkeys added yet.
+          </p>
         )}
 
         {notice && (

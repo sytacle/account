@@ -3,7 +3,11 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { authorize } from "./oauth/authorize.js";
 import { tokenExchange, revokeToken } from "./oauth/token.js";
-import { createClient, publicClient } from "./oauth/clients.js";
+import {
+  createClient,
+  publicClient,
+  isOriginRegistered,
+} from "./oauth/clients.js";
 import { userInfo } from "./oauth/userinfo.js";
 import { getProfile, updateProfile } from "./users/profile.js";
 import { deletePasskey, listPasskeys, passkeyOptions, registerPasskey } from "./users/passkeys.js";
@@ -26,13 +30,42 @@ app.use(
 app.use(express.json({ limit: "32kb" }));
 app.use(express.urlencoded({ extended: false, limit: "16kb" }));
 
+// Token + userinfo endpoints: any client registered through
+// /v3/oauth/clients should be able to call these from its own registered
+// origin — that's the "public, self-service like Google" part — without
+// opening them to every origin. This has to run before the general CORS
+// check below and can't rely on req.body: a CORS preflight (OPTIONS)
+// carries no body, so client_id isn't available yet. isOriginRegistered()
+// checks the Origin header against the origins indexed on any enabled
+// client instead.
+function oauthClientCors(methods) {
+  return async (req, res, next) => {
+    const origin = req.get("origin");
+    if (origin && (config.corsOrigins.has(origin) || (await isOriginRegistered(origin)))) {
+      res.set("Access-Control-Allow-Origin", origin);
+      res.set("Vary", "Origin");
+      // userinfo needs Authorization for its bearer token; token doesn't
+      // use it but sharing one header list here is harmless.
+      res.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
+      res.set("Access-Control-Allow-Methods", methods);
+    }
+    if (req.method === "OPTIONS") return res.sendStatus(204);
+    return next();
+  };
+}
+
+app.use("/v3/oauth/token", oauthClientCors("POST, OPTIONS"));
+app.use("/v3/oauth/userinfo", oauthClientCors("GET, OPTIONS"));
+
 app.use((req, res, next) => {
   const origin = req.get("origin");
   if (origin && config.corsOrigins.has(origin)) {
     res.set("Access-Control-Allow-Origin", origin);
     res.set("Vary", "Origin");
     res.set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Device-Session");
-    res.set("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS");
+    // DELETE was missing here even though passkeys/sessions below expose
+    // DELETE routes — any browser call to those would fail preflight.
+    res.set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
   }
   if (req.method === "OPTIONS") return res.sendStatus(204);
   return next();

@@ -14,6 +14,38 @@ export async function getClient(id) {
 export const verifyRedirectUri = (c, u) =>
   Array.isArray(c?.redirectUris) && c.redirectUris.includes(u);
 
+// Derive the distinct origins (scheme+host+port) a client's registered
+// redirect URIs live on. Used both to index a client at creation time and
+// to check a request's Origin header against it later.
+export function clientOrigins(c) {
+  if (!Array.isArray(c?.redirectUris)) return [];
+  const origins = new Set();
+  for (const uri of c.redirectUris) {
+    try {
+      origins.add(new URL(uri).origin);
+    } catch {
+      // Malformed entries shouldn't exist post-validation, but don't let
+      // one bad URI break the rest of the lookup.
+    }
+  }
+  return [...origins];
+}
+
+// Is `origin` registered to ANY enabled client? This is what the CORS
+// middleware needs for the token endpoint: a preflight (OPTIONS) request
+// has no body, so there's no client_id to look up yet — the origin has to
+// be checked against the registered-client index on its own.
+export async function isOriginRegistered(origin) {
+  if (typeof origin !== "string" || !origin) return false;
+  const snap = await db
+    .collection("clients")
+    .where("origins", "array-contains", origin)
+    .where("enabled", "==", true)
+    .limit(1)
+    .get();
+  return !snap.empty;
+}
+
 export function authenticateClient(req, b, c) {
   if (!c || c.enabled !== true) return false;
   if (c.public) return true;
@@ -56,7 +88,16 @@ export async function publicClient(req, res) {
 }
 
 export async function createClient(req, res) {
-  await verifyBearerToken(req, true);
+  try {
+    await verifyBearerToken(req, true);
+  } catch {
+    return oauthError(
+      res,
+      "invalid_token",
+      "A valid admin bearer token is required.",
+      401,
+    );
+  }
   const b = req.body || {},
     uris = b.redirect_uris;
   
@@ -109,6 +150,7 @@ export async function createClient(req, res) {
       logoUrl: "https://cdn.sytacle.com/assets/logos/sytacle.png",
       description: "Client app",
       redirectUris: uris,
+      origins: clientOrigins({ redirectUris: uris }),
       privacy: {
         policyUrl: null,
         termsUrl: null,
