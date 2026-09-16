@@ -23,6 +23,7 @@ Firebase Auth blocking triggers such as `beforeUserCreated` and `beforeUserSigne
 - `PATCH /v3/users/me`
 - `GET|POST|DELETE /v3/users/me/sessions`
 - `DELETE /v3/users/me/sessions/:sessionId`
+- `GET /v3/users/me/authorization-sessions`
 - `GET /health`
 - `GET /admin/check` (Firebase admin token required)
 
@@ -83,5 +84,10 @@ Before public third-party OAuth launch, add OAuth/OIDC conformance tests, struct
 The Account client assigns each browser installation a random device-session ID and
 registers its user agent and last-seen time at `POST /v3/users/me/sessions`.
 Sessions can be listed and remotely ended through the protected endpoints above.
+
+Authorization sessions list the enabled OAuth applications with an active
+refresh-token family for the signed-in account. OAuth grants are stored per
+account and client, so a repeat authorization request for already granted
+scopes can be completed without showing consent again.
 A revoked session is rejected whenever it presents `X-Device-Session`; deployers
 should configure `VITE_ACCOUNT_API_URL` to this API origin.

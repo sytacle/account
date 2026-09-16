@@ -155,6 +155,24 @@ export default function AuthorizePage() {
         }
         setClient(data);
         setClientState("ready");
+
+        try {
+          const idToken = await user.getIdToken();
+          const query = new URLSearchParams({
+            client_id: clientId,
+            redirect_uri: redirectUri,
+            response_type: responseType,
+            scope: requestedScopes.join(" "),
+            code_challenge: codeChallenge,
+            code_challenge_method: codeChallengeMethod,
+          });
+          const grant = await oauthRequest(`/v3/oauth/authorize?${query}`, {
+            headers: { Authorization: `Bearer ${idToken}` },
+          });
+          if (active && grant.granted) handleAllow();
+        } catch {
+          // Consent remains available if the optional status check fails.
+        }
       } catch {
         if (active) setClientState("invalid");
       }
@@ -163,7 +181,7 @@ export default function AuthorizePage() {
     return () => {
       active = false;
     };
-  }, [clientId, redirectUri]);
+  }, [clientId, redirectUri, user]);
 
   async function handleChange() {
     await signOutUser();

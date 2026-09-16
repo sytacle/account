@@ -124,7 +124,15 @@ async function issue(uid, cid, scope, res, familyId) {
   
   batch.set(
     db.collection("oauthRefreshFamilies").doc(family),
-    { uid, clientId: cid, revoked: false, updatedAt: Timestamp.now() },
+    {
+      uid,
+      clientId: cid,
+      scope,
+      revoked: false,
+      expiresAt: Timestamp.fromMillis(now + config.oauth.refreshTtl * 1000),
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    },
     { merge: true },
   );
   

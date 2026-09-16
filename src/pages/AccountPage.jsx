@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   CalendarDays,
   CheckCircle2,
+  AppWindow,
   KeyRound,
   Mail,
   Pencil,
@@ -349,10 +350,83 @@ function CardTitle({ title, subtitle }) {
   );
 }
 
+function AuthorizationCard() {
+  const { user } = useAuth();
+  const [sessions, setSessions] = useState([]);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    async function load() {
+      try {
+        const { getAuthorizationSessions } = await import(
+          "../lib/accountApi.js"
+        );
+        const result = await getAuthorizationSessions(user);
+        if (active) setSessions(result.sessions || []);
+      } catch (err) {
+        if (active) setError(friendlyAuthError(err));
+      }
+    }
+    load();
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  return (
+    <Card>
+      <CardTitle
+        title="Applications"
+        subtitle="Review applications signed in with your account."
+      />
+      {error ? (
+        <div className="px-5 py-4">
+          <FormNotice>{error}</FormNotice>
+        </div>
+      ) : sessions.length ? (
+        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+          {sessions.map((session) => (
+            <div key={session.id} className="flex items-center gap-3 px-5 py-4">
+              {session.logoUrl ? (
+                <img
+                  src={session.logoUrl}
+                  alt=""
+                  className="size-10 rounded-xl object-cover"
+                />
+              ) : (
+                <div className="grid size-10 place-items-center rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400">
+                  <AppWindow size={18} />
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                  {session.clientName}
+                </p>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Signed in · {session.scope.join(", ") || "No scopes"}
+                </p>
+              </div>
+              <span className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
+                Active
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="px-5 py-4 text-sm text-slate-500 dark:text-slate-400">
+          No applications are signed in with your account.
+        </p>
+      )}
+    </Card>
+  );
+}
+
 export default function AccountPage() {
   return (
     <div className="space-y-5">
       <ProfileCard />
+      <AuthorizationCard />
       <div className="grid gap-5 xl:grid-cols-2">
         <SecurityCard />
         <LinkedCard />
