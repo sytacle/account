@@ -18,6 +18,9 @@ export async function setUserClaims(uid, patch) {
 export const setAdmin = (uid, v) =>
   setUserClaims(uid, { admin: !!v, role: v ? "admin" : "user" });
 
+export const setDeveloper = (uid, v) =>
+  setUserClaims(uid, { role: v ? "developer" : "user" });
+
 export async function setSubscription(uid, v) {
   if (!subs.has(v)) throw new Error("Invalid subscription.");
   return setUserClaims(uid, { subscription: v });

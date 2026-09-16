@@ -96,6 +96,15 @@ export const getPurchases = (user) =>
 export const getSubscriptions = (user) =>
   request(user, "/v3/users/me/billing/subscriptions");
 
+export const getSubscriptionProducts = (user) =>
+  request(user, "/v3/subscription-products");
+
+export const createSubscription = (user, productId, priceId) =>
+  request(user, "/v3/users/me/billing/subscriptions", {
+    method: "POST",
+    body: JSON.stringify({ productId, priceId }),
+  });
+
 export const cancelSubscription = (user, subscriptionId) =>
   request(
     user,

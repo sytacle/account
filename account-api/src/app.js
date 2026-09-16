@@ -24,6 +24,19 @@ import {
   removePaymentMethod,
   updateBilling,
 } from "./users/billing.js";
+import {
+  createItem,
+  createPrice,
+  createProduct,
+  createSubscription,
+  getSubscriptionConfig,
+  listManagedProducts,
+  listSubscriptionProducts,
+  updateItem,
+  updatePrice,
+  updateProduct,
+  updateSubscriptionConfig,
+} from "./users/subscriptionPlans.js";
 import { verifyBearerToken } from "./auth/security.js";
 import { oauthError } from "./lib/http.js";
 import { config } from "./config.js";
@@ -134,6 +147,17 @@ app.delete("/v3/users/me/billing/payment-methods/:paymentMethodId", removePaymen
 app.get("/v3/users/me/billing/purchases", listPurchases);
 app.get("/v3/users/me/billing/subscriptions", listSubscriptions);
 app.post("/v3/users/me/billing/subscriptions/:subscriptionId/cancel", cancelSubscription);
+app.get("/v3/subscription-products", listSubscriptionProducts);
+app.post("/v3/users/me/billing/subscriptions", createSubscription);
+app.get("/v3/admin/subscription-products", listManagedProducts);
+app.post("/v3/admin/subscription-products", createProduct);
+app.patch("/v3/admin/subscription-products/:productId", updateProduct);
+app.post("/v3/admin/subscription-products/:productId/items", createItem);
+app.patch("/v3/admin/subscription-products/:productId/items/:itemId", updateItem);
+app.post("/v3/admin/subscription-products/:productId/prices", createPrice);
+app.patch("/v3/admin/subscription-products/:productId/prices/:priceId", updatePrice);
+app.get("/v3/admin/subscription-configuration", getSubscriptionConfig);
+app.patch("/v3/admin/subscription-configuration", updateSubscriptionConfig);
 
 app.use((req, res) =>
   oauthError(res, "not_found", `No route for ${req.method} ${req.path}.`, 404),

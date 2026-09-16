@@ -3,7 +3,7 @@ import { db, Timestamp } from "../firebase.js";
 import { config } from "../config.js";
 import { hashSecret, verifySecret } from "../lib/crypto.js";
 import { oauthError, send } from "../lib/http.js";
-import { verifyBearerToken } from "../auth/security.js";
+import { verifyRole } from "../auth/security.js";
 
 export async function getClient(id) {
   if (typeof id !== "string" || !id) return null;
@@ -89,12 +89,19 @@ export async function publicClient(req, res) {
 
 export async function createClient(req, res) {
   try {
-    await verifyBearerToken(req, true);
-  } catch {
+    await verifyRole(req, ["developer", "admin"]);
+  } catch (error) {
+    if (error?.code === "permission_denied")
+      return oauthError(
+        res,
+        "permission_denied",
+        "Developer or admin role required.",
+        403,
+      );
     return oauthError(
       res,
       "invalid_token",
-      "A valid admin bearer token is required.",
+      "A valid developer or admin bearer token is required.",
       401,
     );
   }

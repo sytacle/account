@@ -50,6 +50,7 @@ export default function PaymentsSection() {
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [purchases, setPurchases] = useState([]);
   const [subscriptions, setSubscriptions] = useState([]);
+  const [products, setProducts] = useState([]);
   const [form, setForm] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -66,13 +67,15 @@ export default function PaymentsSection() {
         getPaymentMethods,
         getPurchases,
         getSubscriptions,
+        getSubscriptionProducts,
       } = await import("../lib/accountApi.js");
-      const [billingResult, methodsResult, purchasesResult, subscriptionsResult] =
+      const [billingResult, methodsResult, purchasesResult, subscriptionsResult, productsResult] =
         await Promise.all([
           getBilling(user),
           getPaymentMethods(user),
           getPurchases(user),
           getSubscriptions(user),
+          getSubscriptionProducts(user),
         ]);
       const nextBilling = billingResult.billing || {};
       setBillingExists(billingResult.exists === true);
@@ -80,6 +83,7 @@ export default function PaymentsSection() {
       setPaymentMethods(methodsResult.paymentMethods || []);
       setPurchases(purchasesResult.purchases || []);
       setSubscriptions(subscriptionsResult.subscriptions || []);
+      setProducts(productsResult.products || []);
     } catch (err) {
       setError(friendlyAuthError(err));
     } finally {
@@ -159,6 +163,22 @@ export default function PaymentsSection() {
     }
   }
 
+  async function subscribe(productId, priceId) {
+    setBusy(priceId);
+    setError("");
+    setNotice("");
+    try {
+      const { createSubscription } = await import("../lib/accountApi.js");
+      await createSubscription(user, productId, priceId);
+      setNotice("Subscription created.");
+      await load();
+    } catch (err) {
+      setError(friendlyAuthError(err));
+    } finally {
+      setBusy("");
+    }
+  }
+
   return (
     <div className="max-w-4xl">
       <SectionHeader
@@ -214,6 +234,41 @@ export default function PaymentsSection() {
                 </button>
               </div>
             </form>
+          </Card>
+
+          <Card>
+            <div className="border-b border-slate-100 px-5 py-5 dark:border-slate-800">
+              <h3 className="font-semibold text-slate-900 dark:text-slate-100">Subscription plans</h3>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Choose a Sytacle plan for your account.</p>
+            </div>
+            {products.length ? products.map((product) => (
+              <div key={product.id} className="border-b border-slate-100 px-5 py-4 last:border-0 dark:border-slate-800">
+                <div className="flex flex-wrap items-start gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{product.name}</p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{product.description || "Sytacle subscription plan"}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {product.prices.map((price) => {
+                      const activeSubscription = subscriptions.find(
+                        (subscription) => subscription.priceId === price.id || subscription.productId === product.id,
+                      );
+                      return (
+                        <button
+                          key={price.id}
+                          type="button"
+                          onClick={() => subscribe(product.id, price.id)}
+                          disabled={Boolean(activeSubscription) || busy === price.id}
+                          className="rounded-full border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-700 disabled:cursor-not-allowed disabled:opacity-60 dark:border-blue-900/60 dark:text-blue-400"
+                        >
+                          {activeSubscription ? activeSubscription.status : busy === price.id ? "Subscribing..." : `${money(price.amount, price.currency)} / ${price.interval}`}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )) : <p className="px-5 py-4 text-sm text-slate-500 dark:text-slate-400">No subscription plans are available.</p>}
           </Card>
 
           <Card>

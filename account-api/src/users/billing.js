@@ -61,6 +61,8 @@ function serializeSubscription(doc) {
     id: doc.id,
     planId: data.planId || null,
     planName: data.planName || data.planId || "Subscription",
+    productId: data.productId || null,
+    priceId: data.priceId || null,
     status: data.status || "active",
     amount: Number(data.amount || 0),
     currency: data.currency || "USD",

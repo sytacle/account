@@ -17,7 +17,7 @@ Firebase Auth blocking triggers such as `beforeUserCreated` and `beforeUserSigne
 - `POST /v3/oauth/token`
 - `POST /v3/oauth/revoke`
 - `GET /v3/oauth/clients/:clientId`
-- `POST /v3/oauth/clients` (Firebase admin token required)
+- `POST /v3/oauth/clients` (developer or admin role required)
 - `GET /v3/oauth/userinfo`
 - `GET /v3/users/me`
 - `PATCH /v3/users/me`
@@ -31,6 +31,10 @@ Firebase Auth blocking triggers such as `beforeUserCreated` and `beforeUserSigne
 - `GET /v3/users/me/billing/purchases`
 - `GET /v3/users/me/billing/subscriptions`
 - `POST /v3/users/me/billing/subscriptions/:subscriptionId/cancel`
+- `GET /v3/subscription-products`
+- `POST /v3/users/me/billing/subscriptions` (developer or admin role only)
+- `GET|POST|PATCH /v3/admin/subscription-products...` (admin or `billing_admin` role)
+- `GET|PATCH /v3/admin/subscription-configuration` (admin or `billing_admin` role)
 - `GET /health`
 - `GET /admin/check` (Firebase admin token required)
 

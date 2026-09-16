@@ -44,3 +44,11 @@ export async function verifyBearerToken(req, admin = false) {
     );
   }
 }
+
+export async function verifyRole(req, roles) {
+  const token = await verifyBearerToken(req);
+  const allowed = Array.isArray(roles) ? roles : [roles];
+  if (token.admin !== true && !allowed.includes(token.role))
+    throw new ApiError("permission_denied", "The required account role is missing.", 403);
+  return token;
+}
