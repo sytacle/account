@@ -179,6 +179,8 @@ export function AuthProvider({ children }) {
         location,
         locale,
         zoneinfo,
+        country,
+        gender,
       }) {
         if (!auth.currentUser) throw new Error("Not signed in");
         await verifyPasskey(auth.currentUser);
@@ -196,6 +198,8 @@ export function AuthProvider({ children }) {
         if (birthday !== undefined) docPatch.birthday = birthday;
         if (location !== undefined) docPatch.location = location;
         if (locale !== undefined) docPatch.locale = locale;
+        if (country !== undefined) docPatch.country = country;
+        if (gender !== undefined) docPatch.gender = gender;
         if (zoneinfo !== undefined) {
           docPatch.zoneinfo = zoneinfo;
           docPatch.timezone = zoneinfo;

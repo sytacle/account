@@ -87,6 +87,12 @@ export async function userInfo(req, res) {
       if (x.location) {
         b.location = x.location;
       }
+      if (x.country) {
+        b.country = x.country;
+      }
+      if (x.gender) {
+        b.gender = x.gender;
+      }
     }
   }
 

@@ -18,7 +18,7 @@ export async function getProfile(req, res) {
 export async function updateProfile(req, res) {
   const d = await requirePasskeyVerification(req),
     a = {};
-  for (const f of ["displayName", "photoURL", "locale", "timezone", "zoneinfo", "location"])
+  for (const f of ["displayName", "photoURL", "locale", "timezone", "zoneinfo", "location", "country", "gender"])
     if (typeof req.body?.[f] === "string" && req.body[f].length <= 2048)
       a[f] = req.body[f].trim();
   if (!Object.keys(a).length)

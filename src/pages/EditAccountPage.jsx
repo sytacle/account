@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, CheckCircle2, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card } from "../components/Card";
@@ -12,9 +12,18 @@ const fields = [
   ["phone", "Phone number", "tel"],
   ["birthday", "Birthday", "date"],
   ["location", "Location", "text"],
-  ["locale", "Language / locale", "text"],
   ["zoneinfo", "Time zone", "text"],
 ];
+
+const fallbackCountries = [
+  ["US", "United States"],
+  ["GB", "United Kingdom"],
+  ["CA", "Canada"],
+  ["AU", "Australia"],
+  ["PH", "Philippines"],
+  ["JP", "Japan"],
+];
+const fallbackLocales = ["en-US", "en-GB", "fil-PH", "ja-JP", "fr-FR", "de-DE"];
 
 export default function EditAccountPage() {
   const { user, profile, saveProfile } = useAuth();
@@ -23,12 +32,46 @@ export default function EditAccountPage() {
     phone: profile?.phone || "",
     birthday: profile?.birthday || "",
     location: profile?.location || "",
+    country: profile?.country || "",
+    gender: profile?.gender || "",
     locale: profile?.locale || "",
     zoneinfo: profile?.zoneinfo || profile?.timezone || "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [countries, setCountries] = useState(fallbackCountries);
+  const [locales, setLocales] = useState(fallbackLocales);
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      fetch("https://restcountries.com/v3.1/all?fields=cca2,name").then((response) => {
+        if (!response.ok) throw new Error("Countries unavailable");
+        return response.json();
+      }),
+      fetch("https://raw.githubusercontent.com/umpirsky/language-list/master/data/en/language.json").then((response) => {
+        if (!response.ok) throw new Error("Locales unavailable");
+        return response.json();
+      }),
+    ])
+      .then(([countryData, localeData]) => {
+        if (!active) return;
+        setCountries(
+          countryData
+            .filter((country) => country.cca2 && country.name?.common)
+            .map((country) => [country.cca2, country.name.common])
+            .sort((a, b) => a[1].localeCompare(b[1])),
+        );
+        setLocales(Object.entries(localeData).map(([code]) => code).sort());
+      })
+      .catch(() => {
+        // Keep the small built-in lists when the public catalog APIs are unavailable.
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -86,6 +129,42 @@ export default function EditAccountPage() {
                 />
               </label>
             ))}
+            <label>
+              <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-300">Gender</span>
+              <select
+                value={form.gender}
+                onChange={(event) => setForm({ ...form, gender: event.target.value })}
+                className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3.5 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+              >
+                <option value="">Prefer not to say</option>
+                <option value="female">Female</option>
+                <option value="male">Male</option>
+                <option value="nonbinary">Non-binary</option>
+                <option value="other">Other</option>
+              </select>
+            </label>
+            <label>
+              <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-300">Country</span>
+              <select
+                value={form.country}
+                onChange={(event) => setForm({ ...form, country: event.target.value })}
+                className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3.5 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+              >
+                <option value="">Select a country</option>
+                {countries.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
+              </select>
+            </label>
+            <label>
+              <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-300">Language / locale</span>
+              <select
+                value={form.locale}
+                onChange={(event) => setForm({ ...form, locale: event.target.value })}
+                className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3.5 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+              >
+                <option value="">Select a locale</option>
+                {locales.map((locale) => <option key={locale} value={locale}>{locale}</option>)}
+              </select>
+            </label>
           </div>
           <div className="flex items-center gap-3">
             <button
