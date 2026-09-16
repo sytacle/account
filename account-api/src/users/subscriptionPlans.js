@@ -240,7 +240,7 @@ export async function createSubscription(req, res) {
     throw new ApiError("permission_denied", "Developer or admin role required.", 403);
   const billingRoot = db.collection("users").doc(token.uid).collection("billing");
   const legacyBilling = await billingRoot.doc("account").get();
-  const billingAccounts = await billingRoot.collection("accounts").get();
+  const billingAccounts = await billingRoot.doc("account").collection("accounts").get();
   if (!legacyBilling.exists && billingAccounts.empty)
     throw new ApiError("billing_account_required", "Create a billing account before subscribing.", 409);
 

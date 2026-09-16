@@ -21,7 +21,7 @@ function billingRef(uid) {
 }
 
 function billingAccounts(uid) {
-  return db.collection("users").doc(uid).collection("billing").collection("accounts");
+  return billingRef(uid).collection("accounts");
 }
 
 function activeBillingRef(uid) {
