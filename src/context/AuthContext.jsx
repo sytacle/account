@@ -7,6 +7,7 @@ import {
   createUserWithEmailAndPassword,
   linkWithPopup,
   getAdditionalUserInfo,
+  getMultiFactorResolver,
   isSignInWithEmailLink,
   onAuthStateChanged,
   sendEmailVerification,
@@ -35,6 +36,18 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [mfaResolver, setMfaResolver] = useState(null);
+  const [mfaVerification, setMfaVerification] = useState(null);
+
+  function requireMfa(error) {
+    if (error?.code !== "auth/multi-factor-auth-required") throw error;
+    const resolver = getMultiFactorResolver(auth, error);
+    setMfaResolver(resolver);
+    setMfaVerification(null);
+    const mfaError = new Error("Multi-factor authentication is required.");
+    mfaError.code = "auth/multi-factor-auth-required";
+    throw mfaError;
+  }
 
   // Track the signed-in Firebase user.
   useEffect(() => {
@@ -80,6 +93,44 @@ export function AuthProvider({ children }) {
       profile,
       loading: authLoading || (Boolean(user) && profileLoading && !profile),
       isAuthenticated: Boolean(user),
+      mfaRequired: Boolean(mfaResolver),
+      mfaHints: mfaResolver?.hints || [],
+      mfaCodeSent: Boolean(mfaVerification),
+
+      async sendMfaCode() {
+        if (!mfaResolver) throw new Error("No MFA sign-in is pending.");
+        const verifier = new RecaptchaVerifier(auth, "login-mfa-recaptcha", {
+          size: "invisible",
+        });
+        const hint = mfaResolver.hints[0];
+        const verificationId = await new PhoneAuthProvider(auth).verifyPhoneNumber(
+          { multiFactorHint: hint, session: mfaResolver.sessionInfo },
+          verifier,
+        );
+        setMfaVerification({ verificationId, verifier });
+      },
+
+      async completeMfaSignIn(code) {
+        if (!mfaResolver || !mfaVerification)
+          throw new Error("Request an MFA code first.");
+        const credential = PhoneAuthProvider.credential(
+          mfaVerification.verificationId,
+          code,
+        );
+        const result = await mfaResolver.resolveSignIn(
+          PhoneMultiFactorGenerator.assertion(credential),
+        );
+        mfaVerification.verifier?.clear();
+        setMfaResolver(null);
+        setMfaVerification(null);
+        return result.user;
+      },
+
+      cancelMfaSignIn() {
+        mfaVerification?.verifier?.clear();
+        setMfaResolver(null);
+        setMfaVerification(null);
+      },
 
       async signUpWithEmail(email, password, displayName) {
         const cred = await createUserWithEmailAndPassword(auth, email, password);
@@ -91,8 +142,12 @@ export function AuthProvider({ children }) {
       },
 
       async signInWithEmail(email, password) {
-        const cred = await signInWithEmailAndPassword(auth, email, password);
-        return cred.user;
+        try {
+          const cred = await signInWithEmailAndPassword(auth, email, password);
+          return cred.user;
+        } catch (error) {
+          return requireMfa(error);
+        }
       },
 
       async sendPasswordlessSignInLink(email, continueUrl) {
@@ -106,7 +161,12 @@ export function AuthProvider({ children }) {
         if (!isSignInWithEmailLink(auth, emailLink)) {
           throw new Error("This sign-in link is invalid or has expired.");
         }
-        const credential = await signInWithEmailLink(auth, email, emailLink);
+        let credential;
+        try {
+          credential = await signInWithEmailLink(auth, email, emailLink);
+        } catch (error) {
+          return requireMfa(error);
+        }
         const profile = await ensureUserProfile(credential.user);
         return {
           user: credential.user,
@@ -116,18 +176,30 @@ export function AuthProvider({ children }) {
       },
 
       async signInWithGoogle() {
-        const cred = await signInWithPopup(auth, googleProvider);
-        return cred.user;
+        try {
+          const cred = await signInWithPopup(auth, googleProvider);
+          return cred.user;
+        } catch (error) {
+          return requireMfa(error);
+        }
       },
 
       async signInWithGithub() {
-        const cred = await signInWithPopup(auth, githubProvider);
-        return cred.user;
+        try {
+          const cred = await signInWithPopup(auth, githubProvider);
+          return cred.user;
+        } catch (error) {
+          return requireMfa(error);
+        }
       },
 
       async signInWithPasskey(token) {
-        const cred = await signInWithCustomToken(auth, token);
-        return cred.user;
+        try {
+          const cred = await signInWithCustomToken(auth, token);
+          return cred.user;
+        } catch (error) {
+          return requireMfa(error);
+        }
       },
 
       async sendReset(email) {
@@ -251,7 +323,7 @@ export function AuthProvider({ children }) {
         });
       },
     }),
-    [user, profile, authLoading, profileLoading]
+    [user, profile, authLoading, profileLoading, mfaResolver, mfaVerification]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

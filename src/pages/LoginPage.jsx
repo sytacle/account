@@ -52,6 +52,12 @@ export default function LoginPage() {
     signInWithGoogle,
     signInWithGithub,
     signInWithPasskey: signInWithFirebasePasskey,
+    mfaRequired,
+    mfaHints,
+    mfaCodeSent,
+    sendMfaCode,
+    completeMfaSignIn,
+    cancelMfaSignIn,
   } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -61,6 +67,7 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [mfaCode, setMfaCode] = useState("");
   const passwordlessCompletionStarted = useRef(false);
 
   useEffect(() => {
@@ -140,6 +147,18 @@ export default function LoginPage() {
     });
   }
 
+  async function handleMfaSend() {
+    await withBusy("mfa-send", sendMfaCode);
+  }
+
+  async function handleMfaComplete(event) {
+    event.preventDefault();
+    await withBusy("mfa-verify", async () => {
+      await completeMfaSignIn(mfaCode);
+      navigate(returnTo, { replace: true });
+    });
+  }
+
   return (
     <div className="min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <header className="flex h-16 items-center justify-between border-b border-slate-100 px-5 dark:border-slate-800 sm:px-8">
@@ -170,6 +189,62 @@ export default function LoginPage() {
                 {error || notice}
               </FormNotice>
             )}
+            {mfaRequired && (
+              <div className="space-y-4 rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/60 dark:bg-blue-500/10">
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    Two-factor authentication
+                  </h2>
+                  <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">
+                    {mfaHints[0]?.phoneNumber
+                      ? `Enter the code sent to ${mfaHints[0].phoneNumber}.`
+                      : "Verify your account with your enrolled second factor."}
+                  </p>
+                </div>
+                {!mfaCodeSent ? (
+                  <button
+                    type="button"
+                    onClick={handleMfaSend}
+                    disabled={busy === "mfa-send"}
+                    className="h-11 w-full rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white disabled:opacity-60"
+                  >
+                    {busy === "mfa-send" ? <Spinner size={17} /> : "Send verification code"}
+                  </button>
+                ) : (
+                  <div className="space-y-3">
+                    <input
+                      autoFocus
+                      required
+                      inputMode="numeric"
+                      value={mfaCode}
+                      onChange={(event) => setMfaCode(event.target.value)}
+                      placeholder="Verification code"
+                      className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3.5 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleMfaComplete}
+                      disabled={busy === "mfa-verify" || !mfaCode}
+                      className="h-11 w-full rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white disabled:opacity-60"
+                    >
+                      {busy === "mfa-verify" ? <Spinner size={17} /> : "Verify and sign in"}
+                    </button>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    cancelMfaSignIn();
+                    setMfaCode("");
+                  }}
+                  className="w-full text-xs font-medium text-slate-600 dark:text-slate-300"
+                >
+                  Cancel
+                </button>
+                <div id="login-mfa-recaptcha" />
+              </div>
+            )}
+            <div className={mfaRequired ? "hidden" : "space-y-4"}>
             <div>
               <label
                 className="block text-sm font-medium text-slate-800 dark:text-slate-200"
@@ -258,6 +333,7 @@ export default function LoginPage() {
                   </>
                 )}
               </button>
+            </div>
             </div>
           </form>
           <p className="mt-8 text-center text-xs leading-5 text-slate-400 dark:text-slate-600">
