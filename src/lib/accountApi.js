@@ -68,6 +68,12 @@ export const revokeOtherDeviceSessions = (user) =>
 
 export const getBilling = (user) => request(user, "/v3/users/me/billing");
 
+export const createBilling = (user) =>
+  request(user, "/v3/users/me/billing", {
+    method: "POST",
+    body: "{}",
+  });
+
 export const updateBilling = (user, billing) =>
   request(user, "/v3/users/me/billing", {
     method: "PATCH",

@@ -16,6 +16,7 @@ import { listAuthorizationSessions, revokeAuthorizationSession } from "./users/a
 import {
   addPaymentMethod,
   cancelSubscription,
+  createBilling,
   getBilling,
   listPaymentMethods,
   listPurchases,
@@ -125,6 +126,7 @@ app.delete("/v3/users/me/sessions/:sessionId", revokeSession);
 app.get("/v3/users/me/authorization-sessions", listAuthorizationSessions);
 app.delete("/v3/users/me/authorization-sessions/:sessionId", revokeAuthorizationSession);
 app.get("/v3/users/me/billing", getBilling);
+app.post("/v3/users/me/billing", createBilling);
 app.patch("/v3/users/me/billing", updateBilling);
 app.get("/v3/users/me/billing/payment-methods", listPaymentMethods);
 app.post("/v3/users/me/billing/payment-methods", addPaymentMethod);

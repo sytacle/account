@@ -75,6 +75,7 @@ export async function getBilling(req, res) {
   const snapshot = await billingRef(token.uid).get();
   const account = snapshot.exists ? snapshot.data() : {};
   return send(res, 200, {
+    exists: snapshot.exists,
     billing: {
       name: account.name || "",
       email: account.email || token.email || "",
@@ -87,6 +88,22 @@ export async function getBilling(req, res) {
       taxId: account.taxId || "",
     },
   });
+}
+
+export async function createBilling(req, res) {
+  const token = await verifyBearerToken(req);
+  const ref = billingRef(token.uid);
+  const snapshot = await ref.get();
+  if (snapshot.exists)
+    throw new ApiError("conflict", "A billing account already exists.", 409);
+
+  await ref.create({
+    name: token.name || "",
+    email: token.email || "",
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  return send(res, 201, { ok: true });
 }
 
 export async function updateBilling(req, res) {

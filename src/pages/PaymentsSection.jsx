@@ -46,6 +46,7 @@ function displayDate(value) {
 
 export default function PaymentsSection() {
   const { user } = useAuth();
+  const [billingExists, setBillingExists] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [purchases, setPurchases] = useState([]);
   const [subscriptions, setSubscriptions] = useState([]);
@@ -74,6 +75,7 @@ export default function PaymentsSection() {
           getSubscriptions(user),
         ]);
       const nextBilling = billingResult.billing || {};
+      setBillingExists(billingResult.exists === true);
       setForm(nextBilling);
       setPaymentMethods(methodsResult.paymentMethods || []);
       setPurchases(purchasesResult.purchases || []);
@@ -103,6 +105,23 @@ export default function PaymentsSection() {
       setError(friendlyAuthError(err));
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function createBilling() {
+    setBusy("billing");
+    setError("");
+    setNotice("");
+    try {
+      const { createBilling: create } = await import("../lib/accountApi.js");
+      await create(user);
+      setBillingExists(true);
+      setNotice("Billing account created.");
+      await load();
+    } catch (err) {
+      setError(friendlyAuthError(err));
+    } finally {
+      setBusy("");
     }
   }
 
@@ -151,6 +170,26 @@ export default function PaymentsSection() {
       {notice && <p className="mb-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">{notice}</p>}
       {loading ? (
         <div className="py-12 text-center text-sm text-slate-500">Loading billing details...</div>
+      ) : !billingExists ? (
+        <Card>
+          <div className="border-b border-slate-100 px-5 py-5 dark:border-slate-800">
+            <h3 className="font-semibold text-slate-900 dark:text-slate-100">Billing account</h3>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">No billing account yet.</p>
+          </div>
+          <div className="px-5 py-5">
+            <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
+              Create a billing account to manage payment methods, subscriptions, and purchase history.
+            </p>
+            <button
+              type="button"
+              onClick={createBilling}
+              disabled={busy === "billing"}
+              className="mt-4 rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+            >
+              {busy === "billing" ? "Creating..." : "Create billing account"}
+            </button>
+          </div>
+        </Card>
       ) : (
         <div className="space-y-5">
           <Card>

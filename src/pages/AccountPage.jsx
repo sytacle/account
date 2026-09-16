@@ -1,9 +1,7 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { lazy, Suspense, useEffect, useState } from "react";
 import {
   CalendarDays,
   CheckCircle2,
-  KeyRound,
   Mail,
   Pencil,
   Phone,
@@ -15,8 +13,23 @@ import { Card, Row } from "../components/Card";
 import Spinner from "../components/Spinner";
 import FormNotice from "../components/FormNotice";
 import { useAuth } from "../context/AuthContext";
-import { oauthProviders } from "../data/account";
 import { friendlyAuthError } from "../lib/authErrors";
+
+const SecurityCard = lazy(() =>
+  import("./AccountCards").then(({ SecurityCard: Component }) => ({
+    default: Component,
+  })),
+);
+const LinkedCard = lazy(() =>
+  import("./AccountCards").then(({ LinkedCard: Component }) => ({
+    default: Component,
+  })),
+);
+const SmallCard = lazy(() =>
+  import("./AccountCards").then(({ SmallCard: Component }) => ({
+    default: Component,
+  })),
+);
 
 function initialsFor(name, email) {
   if (name) {
@@ -236,163 +249,33 @@ function Info({ icon: Icon, label, value }) {
   );
 }
 
-function SecurityCard() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const mfaCount = user?.multiFactor?.enrolledFactors?.length || 0;
-
-  return (
-    <Card>
-      <CardTitle
-        title="Account security"
-        subtitle="Keep your account safe and secure."
-      />
-      <div className="divide-y divide-slate-100 dark:divide-slate-800">
-        <Row
-          icon={KeyRound}
-          title="Passkeys"
-          description={"Update or add your passkeys"}
-          value={"Not set"}
-          onClick={() => navigate("/account/security/passkeys")}
-        />
-        <Row
-          title="Two-factor authentication"
-          description="An extra layer of protection"
-          value={mfaCount > 0 ? "Enabled" : "Not enabled"}
-          onClick={() =>
-            navigate("/account/security/two-factor-authentication")
-          }
-        />
-        <Row
-          title="Email verification"
-          description={
-            user?.emailVerified
-              ? "Your email is verified"
-              : "Verify your email to secure recovery"
-          }
-          value={user?.emailVerified ? "Verified" : "Pending"}
-        />
-      </div>
-      <div className="border-t border-slate-100 px-5 py-3 dark:border-slate-800">
-        <Link
-          to="/account/security"
-          className="text-sm font-medium text-blue-700 dark:text-blue-400"
-        >
-          Manage security →
-        </Link>
-      </div>
-    </Card>
-  );
-}
-
-function LinkedCard() {
-  const { user } = useAuth();
-  const connectedIds = new Set(user?.providerData?.map((p) => p.providerId));
-
-  return (
-    <Card>
-      <CardTitle
-        title="Linked accounts"
-        subtitle="Connect your accounts for a better experience."
-      />
-      <div className="divide-y divide-slate-100 dark:divide-slate-800">
-        {oauthProviders.map((item) => {
-          const providerInfo = user?.providerData?.find(
-            (p) => p.providerId === item.id,
-          );
-          const connected = connectedIds.has(item.id);
-          return (
-            <div key={item.id} className="flex items-center gap-3 px-5 py-3.5">
-              <span className="grid size-9 place-items-center rounded-full bg-slate-100 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                {item.mark}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                  {item.name}
-                </p>
-                <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                  {connected
-                    ? providerInfo?.email || "Connected"
-                    : "Not connected"}
-                </p>
-              </div>
-              {connected ? (
-                <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
-                  Connected
-                </span>
-              ) : (
-                <Link
-                  to="/account/linked"
-                  className="rounded-full border border-blue-200 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50 dark:border-blue-900/60 dark:text-blue-400 dark:hover:bg-blue-500/10"
-                >
-                  Connect
-                </Link>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </Card>
-  );
-}
-
-function CardTitle({ title, subtitle }) {
-  return (
-    <div className="border-b border-slate-100 px-5 py-5 dark:border-slate-800">
-      <h3 className="font-semibold text-slate-900 dark:text-slate-100">
-        {title}
-      </h3>
-      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-        {subtitle}
-      </p>
-    </div>
-  );
-}
-
 export default function AccountPage() {
   return (
     <div className="space-y-5">
       <ProfileCard />
-      <div className="grid gap-5 xl:grid-cols-2">
-        <SecurityCard />
-        <LinkedCard />
-      </div>
-      <div className="grid gap-5 lg:grid-cols-3">
-        <SmallCard
-          title="Privacy & personalization"
-          text="Control activity, visibility, and personalization."
-          to="/account/privacy"
-        />
-        <SmallCard
-          title="Devices"
-          text="Review devices currently signed in to your account."
-          to="/account/devices"
-        />
-        <SmallCard
-          title="Help & support"
-          text="Find answers or contact the Sytacle support team."
-          to="/account/help"
-        />
-      </div>
+      <Suspense fallback={<div className="min-h-40" aria-hidden="true" />}>
+        <div className="grid gap-5 xl:grid-cols-2">
+          <SecurityCard />
+          <LinkedCard />
+        </div>
+        <div className="grid gap-5 lg:grid-cols-3">
+          <SmallCard
+            title="Privacy & personalization"
+            text="Control activity, visibility, and personalization."
+            to="/account/privacy"
+          />
+          <SmallCard
+            title="Devices"
+            text="Review devices currently signed in to your account."
+            to="/account/devices"
+          />
+          <SmallCard
+            title="Help & support"
+            text="Find answers or contact the Sytacle support team."
+            to="/account/help"
+          />
+        </div>
+      </Suspense>
     </div>
-  );
-}
-
-function SmallCard({ title, text, to }) {
-  return (
-    <Card className="p-5">
-      <h3 className="font-semibold text-slate-900 dark:text-slate-100">
-        {title}
-      </h3>
-      <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
-        {text}
-      </p>
-      <Link
-        to={to}
-        className="mt-4 inline-block text-sm font-medium text-blue-700 dark:text-blue-400"
-      >
-        Manage →
-      </Link>
-    </Card>
   );
 }

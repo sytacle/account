@@ -25,7 +25,7 @@ Firebase Auth blocking triggers such as `beforeUserCreated` and `beforeUserSigne
 - `DELETE /v3/users/me/sessions/:sessionId`
 - `GET /v3/users/me/authorization-sessions`
 - `DELETE /v3/users/me/authorization-sessions/:sessionId`
-- `GET|PATCH /v3/users/me/billing`
+- `GET|POST|PATCH /v3/users/me/billing`
 - `GET|POST /v3/users/me/billing/payment-methods`
 - `DELETE /v3/users/me/billing/payment-methods/:paymentMethodId`
 - `GET /v3/users/me/billing/purchases`
