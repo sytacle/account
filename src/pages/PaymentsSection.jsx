@@ -118,7 +118,7 @@ export default function PaymentsSection() {
     setNotice("");
     try {
       const { createBilling: create } = await import("../lib/accountApi.js");
-      await create(user);
+      await create(user, form);
       setBillingExists(true);
       setNotice("Billing account created.");
       await load();
@@ -196,19 +196,28 @@ export default function PaymentsSection() {
             <h3 className="font-semibold text-slate-900 dark:text-slate-100">Billing account</h3>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">No billing account yet.</p>
           </div>
-          <div className="px-5 py-5">
-            <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
-              Create a billing account to manage payment methods, subscriptions, and purchase history.
+          <form onSubmit={(event) => { event.preventDefault(); createBilling(); }} className="grid gap-4 p-5 sm:grid-cols-2">
+            <p className="text-sm leading-6 text-slate-600 dark:text-slate-300 sm:col-span-2">
+              Enter your billing details to create the account.
             </p>
-            <button
-              type="button"
-              onClick={createBilling}
-              disabled={busy === "billing"}
-              className="mt-4 rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-            >
-              {busy === "billing" ? "Creating..." : "Create billing account"}
-            </button>
-          </div>
+            {billingFields.map(([key, label]) => (
+              <label key={key} className={key === "addressLine1" ? "sm:col-span-2" : ""}>
+                <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-300">{label}</span>
+                <input
+                  required={key === "name" || key === "email"}
+                  type={key === "email" ? "email" : "text"}
+                  value={form[key] || ""}
+                  onChange={(event) => setForm({ ...form, [key]: event.target.value })}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950"
+                />
+              </label>
+            ))}
+            <div className="sm:col-span-2">
+              <button type="submit" disabled={busy === "billing"} className="rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">
+                {busy === "billing" ? "Creating..." : "Create billing account"}
+              </button>
+            </div>
+          </form>
         </Card>
       ) : (
         <div className="space-y-5">

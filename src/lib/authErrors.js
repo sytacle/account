@@ -16,6 +16,8 @@ const MESSAGES = {
   "auth/requires-recent-login": "For security, please sign in again before continuing.",
   "auth/too-many-requests": "Too many attempts. Wait a moment and try again.",
   "auth/network-request-failed": "Network error — check your connection and try again.",
+  passkey_required: "A registered passkey is required to continue. Add a passkey in Security first.",
+  billing_account_required: "Create your billing account before subscribing.",
 };
 
 export function friendlyAuthError(error) {

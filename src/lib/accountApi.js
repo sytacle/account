@@ -93,10 +93,10 @@ export const revokeOtherDeviceSessions = (user) =>
 
 export const getBilling = (user) => request(user, "/v3/users/me/billing");
 
-export const createBilling = (user) =>
+export const createBilling = (user, billing) =>
   requestWithPasskey(user, "/v3/users/me/billing", {
     method: "POST",
-    body: "{}",
+    body: JSON.stringify(billing),
   });
 
 export const updateBilling = (user, billing) =>

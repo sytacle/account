@@ -100,9 +100,22 @@ export async function createBilling(req, res) {
   if (snapshot.exists)
     throw new ApiError("conflict", "A billing account already exists.", 409);
 
-  await ref.create({
+  const body = req.body || {};
+  const account = {
     name: token.name || "",
     email: token.email || "",
+  };
+  for (const field of billingFields) {
+    if (body[field] === undefined) continue;
+    if (typeof body[field] !== "string" || body[field].length > 256)
+      throw new ApiError("invalid_request", `Invalid billing field: ${field}.`, 400);
+    account[field] = body[field].trim();
+  }
+  if (!account.name || !account.email)
+    throw new ApiError("invalid_request", "Name and billing email are required.", 400);
+
+  await ref.create({
+    ...account,
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
   });
