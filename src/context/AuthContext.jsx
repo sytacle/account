@@ -23,6 +23,7 @@ import {
 } from "firebase/auth";
 import { auth, githubProvider, googleProvider } from "../config/firebase/auth.js";
 import { registerDeviceSession, verifyPasskey } from "../lib/accountApi.js";
+import { logoutHub, startSilentSso } from "../lib/silentSso.js";
 import {
   ensureUserProfile,
   subscribeToUserProfile,
@@ -59,6 +60,11 @@ export function AuthProvider({ children }) {
     });
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    if (authLoading) return undefined;
+    return startSilentSso();
+  }, [authLoading]);
 
   // Once we have a user, make sure their Firestore profile doc exists
   // and keep it live-synced (so edits from any tab/device show up).
@@ -239,6 +245,7 @@ export function AuthProvider({ children }) {
 
       async signOutUser() {
         await signOut(auth);
+        await logoutHub();
       },
 
       /** Updates Auth profile fields (name/photo) and mirrors editable

@@ -42,6 +42,7 @@ import {
 import { verifyBearerToken } from "./auth/security.js";
 import { oauthError } from "./lib/http.js";
 import { config } from "./config.js";
+import { exchangeSsoToken, ssoCors } from "./sso.js";
 
 const app = express();
 
@@ -83,6 +84,7 @@ function oauthClientCors(methods) {
 
 app.use("/v3/oauth/token", oauthClientCors("POST, OPTIONS"));
 app.use("/v3/oauth/userinfo", oauthClientCors("GET, OPTIONS"));
+app.use("/v3/sso/exchange", ssoCors);
 
 app.use((req, res, next) => {
   const origin = req.get("origin");
@@ -114,6 +116,7 @@ app.get("/health", (_req, res) =>
 app.get("/v3/oauth/authorize", authorize);
 app.post("/v3/oauth/authorize", authorize);
 app.post("/v3/oauth/token", tokenExchange);
+app.post("/v3/sso/exchange", exchangeSsoToken);
 app.post("/v3/oauth/revoke", revokeToken);
 app.get("/v3/oauth/clients/:clientId", publicClient);
 app.post("/v3/oauth/clients", createClient);

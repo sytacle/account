@@ -10,13 +10,14 @@ import "./config/firebase/index.js";
 import "./index.css";
 import App from "./App";
 import { AuthProvider } from "./context/AuthContext";
+import SsoBridge from "./pages/SsoBridge";
+
+const isSsoBridge = window.location.pathname === "/sso/bridge";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
+      {isSsoBridge ? <SsoBridge /> : <AuthProvider><App /></AuthProvider>}
     </BrowserRouter>
   </StrictMode>,
 );

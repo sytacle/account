@@ -55,6 +55,7 @@ Set these in Vercel Project Settings → Environment Variables:
 - `FIREBASE_CLIENT_EMAIL`
 - `FIREBASE_PRIVATE_KEY`
 - `CORS_ORIGINS` (optional comma-separated allowlist; defaults to the production
+    use silent SSO; include `https://sytacle.com` and every deployed relying origin)
   account site and Vite's local development origin)
 - `ACCOUNT_ORIGIN` (the exact browser origin used for WebAuthn, such as
   `https://account.sytacle.com`)

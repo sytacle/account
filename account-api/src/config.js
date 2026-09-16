@@ -14,6 +14,17 @@ export const config = {
       .map((origin) => origin.trim())
       .filter(Boolean),
   ),
+  sso: {
+    origins: new Set(
+      (
+        process.env.SSO_ALLOWED_ORIGINS ||
+        "https://sytacle.com,https://my.sytacle.com"
+      )
+        .split(",")
+        .map((origin) => origin.trim())
+        .filter(Boolean),
+    ),
+  },
   oauth: {
     codeTtl: n("OAUTH_CODE_TTL_SECONDS", 300),
     accessTtl: n("OAUTH_ACCESS_TOKEN_TTL_SECONDS", 3600),
