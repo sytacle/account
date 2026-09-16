@@ -238,8 +238,10 @@ export async function createSubscription(req, res) {
   const token = await requirePasskeyVerification(req);
   if (token.admin !== true && !["developer", "admin"].includes(token.role))
     throw new ApiError("permission_denied", "Developer or admin role required.", 403);
-  const billing = await db.collection("users").doc(token.uid).collection("billing").doc("account").get();
-  if (!billing.exists)
+  const billingRoot = db.collection("users").doc(token.uid).collection("billing");
+  const legacyBilling = await billingRoot.doc("account").get();
+  const billingAccounts = await billingRoot.collection("accounts").get();
+  if (!legacyBilling.exists && billingAccounts.empty)
     throw new ApiError("billing_account_required", "Create a billing account before subscribing.", 409);
 
   const priceId = text(req.body?.priceId, "priceId");
