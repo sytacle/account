@@ -15,7 +15,7 @@ import FormNotice from "../components/FormNotice";
 import { useAuth } from "../context/AuthContext";
 import { oauthProviders } from "../data/account";
 import { friendlyAuthError } from "../lib/authErrors";
-const PaymentsSection = lazy(() => import("./PaymentsSection"));
+const PaymentsSection = lazy(() => import("./PaymentsPage"));
 const PreferenceSections = lazy(() => import("./PreferenceSections"));
 
 function SectionHeader({ icon: Icon, title, subtitle }) {
