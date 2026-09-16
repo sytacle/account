@@ -30,8 +30,43 @@ const billingFields = [
   ["city", "City"],
   ["state", "State / region"],
   ["postalCode", "Postal code"],
-  ["country", "Country"],
 ];
+
+const fallbackCountries = [
+  ["US", "United States"],
+  ["GB", "United Kingdom"],
+  ["CA", "Canada"],
+  ["AU", "Australia"],
+  ["PH", "Philippines"],
+  ["JP", "Japan"],
+];
+
+function CountryField({ value, onChange, countries, required = false }) {
+  const hasCurrentCountry = value && countries.some(([code]) => code === value);
+  return (
+    <label>
+      <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-300">
+        Country
+      </span>
+      <select
+        required={required}
+        value={value || ""}
+        onChange={onChange}
+        className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950"
+      >
+        <option value="">Select a country</option>
+        {hasCurrentCountry ? null : value ? (
+          <option value={value}>{value}</option>
+        ) : null}
+        {countries.map(([code, name]) => (
+          <option key={code} value={code}>
+            {name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
 
 function money(amount, currency) {
   return new Intl.NumberFormat(undefined, {
@@ -57,6 +92,31 @@ export default function PaymentsSection() {
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [countries, setCountries] = useState(fallbackCountries);
+
+  useEffect(() => {
+    let active = true;
+    fetch("https://restcountries.com/v3.1/all?fields=cca2,name")
+      .then((response) => {
+        if (!response.ok) throw new Error("Countries unavailable");
+        return response.json();
+      })
+      .then((data) => {
+        if (!active) return;
+        setCountries(
+          data
+            .filter((country) => country.cca2 && country.name?.common)
+            .map((country) => [country.cca2, country.name.common])
+            .sort((a, b) => a[1].localeCompare(b[1])),
+        );
+      })
+      .catch(() => {
+        // Keep the fallback list if the country catalog is unavailable.
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function load() {
     setLoading(true);
@@ -212,6 +272,12 @@ export default function PaymentsSection() {
                 />
               </label>
             ))}
+            <CountryField
+              value={form.country}
+              required
+              countries={countries}
+              onChange={(event) => setForm({ ...form, country: event.target.value })}
+            />
             <div className="sm:col-span-2">
               <button type="submit" disabled={busy === "billing"} className="rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">
                 {busy === "billing" ? "Creating..." : "Create billing account"}
@@ -237,6 +303,11 @@ export default function PaymentsSection() {
                   />
                 </label>
               ))}
+              <CountryField
+                value={form.country}
+                countries={countries}
+                onChange={(event) => setForm({ ...form, country: event.target.value })}
+              />
               <div className="sm:col-span-2">
                 <button type="submit" disabled={saving} className="rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">
                   {saving ? "Saving..." : "Save billing details"}

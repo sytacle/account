@@ -31,6 +31,20 @@ const allowedOrigins = () => {
   return origins;
 };
 
+async function verifyWebAuthn(operation) {
+  try {
+    return await operation();
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    console.error("WebAuthn verification failed:", error);
+    throw new ApiError(
+      "invalid_passkey_response",
+      "The passkey response could not be verified. Check the account origin and try again.",
+      400,
+    );
+  }
+}
+
 export async function passkeyOptions(req, res) {
   const token = await verifyBearerToken(req);
   const challengeId = randomUUID();
@@ -72,18 +86,18 @@ export async function registerPasskey(req, res) {
     .doc(challengeId);
   
   const challengeDoc = await ref.get();
-  const saved = challengeDoc.data();
-  
-  if (!challengeDoc.exists || saved.expiresAt.toMillis() < Date.now())
+  const saved = challengeDoc.exists ? challengeDoc.data() : null;
+
+  if (!saved?.expiresAt?.toMillis || saved.expiresAt.toMillis() < Date.now())
     throw new ApiError("invalid_request", "Passkey challenge expired.", 400);
   const validOrigins = allowedOrigins();
 
-  const verification = await verifyRegistrationResponse({
-    response,
-    expectedChallenge: saved.challenge,
-    expectedOrigin: [...validOrigins],
-    expectedRPID: rpId(),
-  });
+  const verification = await verifyWebAuthn(() => verifyRegistrationResponse({
+      response,
+      expectedChallenge: saved.challenge,
+      expectedOrigin: [...validOrigins],
+      expectedRPID: rpId(),
+    }));
   if (!verification.verified)
     throw new ApiError("invalid_request", "Invalid passkey response.", 400);
 
@@ -133,7 +147,7 @@ export async function passkeyLogin(req, res) {
 
   const challengeRef = db.collection("passkeyLoginChallenges").doc(challengeId);
   const challengeDoc = await challengeRef.get();
-  if (!challengeDoc.exists || challengeDoc.data().expiresAt.toMillis() < Date.now())
+  if (!challengeDoc.exists || !challengeDoc.data()?.expiresAt?.toMillis || challengeDoc.data().expiresAt.toMillis() < Date.now())
     throw new ApiError("invalid_request", "Passkey login challenge expired.", 400);
 
   const credentialSnapshot = await db
@@ -148,18 +162,18 @@ export async function passkeyLogin(req, res) {
   const credentialData = credentialDoc.data();
   const userDoc = credentialDoc.ref.parent.parent;
   const validOrigins = allowedOrigins();
-  const verification = await verifyAuthenticationResponse({
-    response,
-    expectedChallenge: challengeDoc.data().challenge,
-    expectedOrigin: [...validOrigins],
-    expectedRPID: rpId(),
-    credential: {
-      id: credentialData.id,
-      publicKey: Uint8Array.from(Buffer.from(credentialData.publicKey, "base64url")),
-      counter: credentialData.counter || 0,
-      transports: credentialData.transports || [],
-    },
-  });
+  const verification = await verifyWebAuthn(() => verifyAuthenticationResponse({
+      response,
+      expectedChallenge: challengeDoc.data().challenge,
+      expectedOrigin: [...validOrigins],
+      expectedRPID: rpId(),
+      credential: {
+        id: credentialData.id,
+        publicKey: Uint8Array.from(Buffer.from(credentialData.publicKey, "base64url")),
+        counter: credentialData.counter || 0,
+        transports: credentialData.transports || [],
+      },
+    }));
   if (!verification.verified)
     throw new ApiError("unauthenticated", "Passkey verification failed.", 401);
 
@@ -200,7 +214,7 @@ export async function verifyPasskeyStepUp(req, res) {
 
   const challengeRef = db.collection("users").doc(token.uid).collection("passkeyStepUpChallenges").doc(challengeId);
   const challengeDoc = await challengeRef.get();
-  if (!challengeDoc.exists || challengeDoc.data().expiresAt.toMillis() < Date.now())
+  if (!challengeDoc.exists || !challengeDoc.data()?.expiresAt?.toMillis || challengeDoc.data().expiresAt.toMillis() < Date.now())
     throw new ApiError("invalid_request", "Passkey verification challenge expired.", 400);
 
   const credentialRef = credentials(token.uid).doc(response.id);
@@ -208,18 +222,18 @@ export async function verifyPasskeyStepUp(req, res) {
   if (!credentialDoc.exists)
     throw new ApiError("unauthenticated", "Passkey was not recognized.", 401);
   const credential = credentialDoc.data();
-  const verification = await verifyAuthenticationResponse({
-    response,
-    expectedChallenge: challengeDoc.data().challenge,
-    expectedOrigin: [...allowedOrigins()],
-    expectedRPID: rpId(),
-    credential: {
-      id: credential.id,
-      publicKey: Uint8Array.from(Buffer.from(credential.publicKey, "base64url")),
-      counter: credential.counter || 0,
-      transports: credential.transports || [],
-    },
-  });
+  const verification = await verifyWebAuthn(() => verifyAuthenticationResponse({
+      response,
+      expectedChallenge: challengeDoc.data().challenge,
+      expectedOrigin: [...allowedOrigins()],
+      expectedRPID: rpId(),
+      credential: {
+        id: credential.id,
+        publicKey: Uint8Array.from(Buffer.from(credential.publicKey, "base64url")),
+        counter: credential.counter || 0,
+        transports: credential.transports || [],
+      },
+    }));
   if (!verification.verified)
     throw new ApiError("unauthenticated", "Passkey verification failed.", 401);
 
@@ -248,7 +262,13 @@ export async function requirePasskeyVerification(req) {
   await db.runTransaction(async (transaction) => {
     const snapshot = await transaction.get(ref);
     const data = snapshot.data();
-    if (!snapshot.exists || data.uid !== token.uid || data.used || data.expiresAt.toMillis() < Date.now())
+    if (
+      !snapshot.exists ||
+      data?.uid !== token.uid ||
+      data.used ||
+      !data.expiresAt?.toMillis ||
+      data.expiresAt.toMillis() < Date.now()
+    )
       throw new ApiError("passkey_required", "Passkey verification is required.", 428);
     transaction.update(ref, { used: true, usedAt: FieldValue.serverTimestamp() });
   });

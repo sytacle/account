@@ -46,6 +46,7 @@ function PasskeysCard() {
   const [notice, setNotice] = useState("");
   const [name, setName] = useState("My passkey");
   const [busy, setBusy] = useState(false);
+  const [deletingId, setDeletingId] = useState("");
   const [passkeys, setPasskeys] = useState([]);
   const [loadError, setLoadError] = useState("");
   const [loadingPasskeys, setLoadingPasskeys] = useState(true);
@@ -68,6 +69,23 @@ function PasskeysCard() {
     loadPasskeys();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  async function removePasskey(id, name) {
+    if (!window.confirm(`Remove ${name || "this passkey"}?`)) return;
+    setDeletingId(id);
+    setNotice("");
+    setLoadError("");
+    try {
+      const { deletePasskey } = await import("../lib/accountApi.js");
+      await deletePasskey(user, id);
+      setPasskeys((current) => current.filter((passkey) => passkey.id !== id));
+      setNotice("Passkey removed.");
+    } catch (err) {
+      setLoadError(friendlyAuthError(err));
+    } finally {
+      setDeletingId("");
+    }
+  }
 
   return (
     <Card className="mb-5 overflow-hidden">
@@ -125,20 +143,33 @@ function PasskeysCard() {
         ) : passkeys.length > 0 ? (
           <div className="mt-4 divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-100 dark:divide-slate-800 dark:border-slate-800">
             {passkeys.map((key) => (
-              <Row
+              <div
                 key={key.id}
-                icon={KeyRound}
-                title={key.name || "Passkey"}
-                description={
-                  "Added on " +
-                  new Date(key.createdAt).toLocaleString("en-US", {
-                    dateStyle: "medium",
-                    timeStyle: "short",
-                  })
-                }
-                value="Manage"
-                onClick={() => navigate(`/account/security/passkeys/${key.id}`)}
-              />
+                className="flex items-center gap-4 px-5 py-4"
+              >
+                <span className="grid size-9 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                  <KeyRound size={18} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                    {key.name || "Passkey"}
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Added on {new Date(key.createdAt).toLocaleString("en-US", {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removePasskey(key.id, key.name)}
+                  disabled={Boolean(deletingId)}
+                  className="shrink-0 text-xs font-medium text-rose-600 disabled:opacity-60 dark:text-rose-400"
+                >
+                  {deletingId === key.id ? "Removing..." : "Remove"}
+                </button>
+              </div>
             ))}
           </div>
         ) : (
