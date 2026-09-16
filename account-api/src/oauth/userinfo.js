@@ -64,8 +64,8 @@ export async function userInfo(req, res) {
    */
   if (s.has("account")) {
     b.admin = u.customClaims?.admin === true;
-    b.role = u.customClaims?.role || undefined;
-    b.subscription = u.customClaims?.subscription || undefined;
+    b.role = u.customClaims?.role || "user";
+    b.subscription = u.customClaims?.subscription || "free";
   }
 
   /*
