@@ -81,8 +81,11 @@ export async function userInfo(req, res) {
         b.locale = x.locale;
       }
 
-      if (x.timezone) {
-        b.zoneinfo = x.timezone;
+      if (x.zoneinfo || x.timezone) {
+        b.zoneinfo = x.zoneinfo || x.timezone;
+      }
+      if (x.location) {
+        b.location = x.location;
       }
     }
   }

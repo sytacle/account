@@ -14,13 +14,14 @@ import {
   sendSignInLinkToEmail,
   signInWithEmailAndPassword,
   signInWithEmailLink,
+  signInWithCustomToken,
   signInWithPopup,
   signOut,
   unlink,
   updateProfile,
 } from "firebase/auth";
 import { auth, githubProvider, googleProvider } from "../config/firebase/auth.js";
-import { registerDeviceSession } from "../lib/accountApi.js";
+import { registerDeviceSession, verifyPasskey } from "../lib/accountApi.js";
 import {
   ensureUserProfile,
   subscribeToUserProfile,
@@ -124,6 +125,11 @@ export function AuthProvider({ children }) {
         return cred.user;
       },
 
+      async signInWithPasskey(token) {
+        const cred = await signInWithCustomToken(auth, token);
+        return cred.user;
+      },
+
       async sendReset(email) {
         await sendPasswordResetEmail(auth, email);
       },
@@ -165,8 +171,17 @@ export function AuthProvider({ children }) {
 
       /** Updates Auth profile fields (name/photo) and mirrors editable
        *  extras (phone/birthday) into the Firestore profile doc. */
-      async saveProfile({ displayName, photoURL, phone, birthday }) {
+      async saveProfile({
+        displayName,
+        photoURL,
+        phone,
+        birthday,
+        location,
+        locale,
+        zoneinfo,
+      }) {
         if (!auth.currentUser) throw new Error("Not signed in");
+        await verifyPasskey(auth.currentUser);
         if (displayName !== undefined || photoURL !== undefined) {
           await updateProfile(auth.currentUser, {
             ...(displayName !== undefined ? { displayName } : {}),
@@ -179,6 +194,12 @@ export function AuthProvider({ children }) {
         const docPatch = {};
         if (phone !== undefined) docPatch.phone = phone;
         if (birthday !== undefined) docPatch.birthday = birthday;
+        if (location !== undefined) docPatch.location = location;
+        if (locale !== undefined) docPatch.locale = locale;
+        if (zoneinfo !== undefined) {
+          docPatch.zoneinfo = zoneinfo;
+          docPatch.timezone = zoneinfo;
+        }
         if (Object.keys(docPatch).length) {
           await updateUserProfileDoc(auth.currentUser.uid, docPatch);
         }
@@ -186,12 +207,14 @@ export function AuthProvider({ children }) {
 
       async linkGoogle() {
         if (!auth.currentUser) throw new Error("Not signed in");
+        await verifyPasskey(auth.currentUser);
         await linkWithPopup(auth.currentUser, googleProvider);
         setUser({ ...auth.currentUser });
       },
 
       async linkGithub() {
         if (!auth.currentUser) throw new Error("Not signed in");
+        await verifyPasskey(auth.currentUser);
         await linkWithPopup(auth.currentUser, githubProvider);
         setUser({ ...auth.currentUser });
       },
@@ -203,12 +226,14 @@ export function AuthProvider({ children }) {
             "You need at least one sign-in method connected — link another before removing this one."
           );
         }
+        await verifyPasskey(auth.currentUser);
         await unlink(auth.currentUser, providerId);
         setUser({ ...auth.currentUser });
       },
 
       async updateNotificationPref(key, value) {
         if (!auth.currentUser) throw new Error("Not signed in");
+        await verifyPasskey(auth.currentUser);
         await updateUserProfileDoc(auth.currentUser.uid, {
           notifications: { ...(profile?.notifications || {}), [key]: value },
         });
@@ -216,6 +241,7 @@ export function AuthProvider({ children }) {
 
       async updatePrivacyPref(key, value) {
         if (!auth.currentUser) throw new Error("Not signed in");
+        await verifyPasskey(auth.currentUser);
         await updateUserProfileDoc(auth.currentUser.uid, {
           privacy: { ...(profile?.privacy || {}), [key]: value },
         });

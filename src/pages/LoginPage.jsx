@@ -6,6 +6,7 @@ import Spinner from "../components/Spinner";
 import FormNotice from "../components/FormNotice";
 import { useAuth } from "../context/AuthContext";
 import { friendlyAuthError } from "../lib/authErrors";
+import { signInWithPasskey } from "../lib/accountApi.js";
 
 const PASSWORDLESS_EMAIL_KEY = "sytacle.passwordlessSignInEmail";
 
@@ -50,6 +51,7 @@ export default function LoginPage() {
     completePasswordlessSignIn,
     signInWithGoogle,
     signInWithGithub,
+    signInWithPasskey: signInWithFirebasePasskey,
   } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -107,6 +109,14 @@ export default function LoginPage() {
     } finally {
       setBusy(null);
     }
+  }
+
+  async function handlePasskeySignIn() {
+    await withBusy("passkey", async () => {
+      const token = await signInWithPasskey();
+      await signInWithFirebasePasskey(token);
+      navigate(returnTo, { replace: true });
+    });
   }
 
   function handleSubmit(event) {
@@ -201,6 +211,15 @@ export default function LoginPage() {
               <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
             </div>
             <div className="space-y-3">
+              <button
+                type="button"
+                disabled={busy === "passkey"}
+                onClick={handlePasskeySignIn}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 text-sm font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-60 dark:border-blue-900/60 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20"
+              >
+                {busy === "passkey" ? <Spinner size={18} /> : <ShieldCheck size={17} />}
+                Sign in with passkey
+              </button>
               <button
                 type="button"
                 disabled={busy === "github"}

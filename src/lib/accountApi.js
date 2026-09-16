@@ -34,6 +34,31 @@ async function request(user, path, options = {}) {
   return data;
 }
 
+export async function verifyPasskey(user) {
+  const options = await request(user, "/v3/users/me/passkeys/verify/options", {
+    method: "POST",
+    body: "{}",
+  });
+  const { startAuthentication } = await import("@simplewebauthn/browser");
+  const response = await startAuthentication({ optionsJSON: options.publicKey });
+  const result = await request(user, "/v3/users/me/passkeys/verify", {
+    method: "POST",
+    body: JSON.stringify({ challengeId: options.challengeId, response }),
+  });
+  return result.verificationToken;
+}
+
+async function requestWithPasskey(user, path, options = {}) {
+  const verificationToken = await verifyPasskey(user);
+  return request(user, path, {
+    ...options,
+    headers: {
+      ...options.headers,
+      "X-Passkey-Verification": verificationToken,
+    },
+  });
+}
+
 export function registerDeviceSession(user) {
   return request(user, "/v3/users/me/sessions", {
     method: "POST",
@@ -52,7 +77,7 @@ export const getAuthorizationSessions = (user) =>
   request(user, "/v3/users/me/authorization-sessions");
 
 export const revokeAuthorizationSession = (user, sessionId) =>
-  request(
+  requestWithPasskey(
     user,
     `/v3/users/me/authorization-sessions/${encodeURIComponent(sessionId)}`,
     { method: "DELETE" },
@@ -69,13 +94,13 @@ export const revokeOtherDeviceSessions = (user) =>
 export const getBilling = (user) => request(user, "/v3/users/me/billing");
 
 export const createBilling = (user) =>
-  request(user, "/v3/users/me/billing", {
+  requestWithPasskey(user, "/v3/users/me/billing", {
     method: "POST",
     body: "{}",
   });
 
 export const updateBilling = (user, billing) =>
-  request(user, "/v3/users/me/billing", {
+  requestWithPasskey(user, "/v3/users/me/billing", {
     method: "PATCH",
     body: JSON.stringify(billing),
   });
@@ -83,8 +108,14 @@ export const updateBilling = (user, billing) =>
 export const getPaymentMethods = (user) =>
   request(user, "/v3/users/me/billing/payment-methods");
 
+export const addPaymentMethod = (user, paymentMethod) =>
+  requestWithPasskey(user, "/v3/users/me/billing/payment-methods", {
+    method: "POST",
+    body: JSON.stringify(paymentMethod),
+  });
+
 export const removePaymentMethod = (user, paymentMethodId) =>
-  request(
+  requestWithPasskey(
     user,
     `/v3/users/me/billing/payment-methods/${encodeURIComponent(paymentMethodId)}`,
     { method: "DELETE" },
@@ -100,60 +131,68 @@ export const getSubscriptionProducts = (user) =>
   request(user, "/v3/subscription-products");
 
 export const createSubscription = (user, productId, priceId) =>
-  request(user, "/v3/users/me/billing/subscriptions", {
+  requestWithPasskey(user, "/v3/users/me/billing/subscriptions", {
     method: "POST",
     body: JSON.stringify({ productId, priceId }),
   });
 
 export const cancelSubscription = (user, subscriptionId) =>
-  request(
+  requestWithPasskey(
     user,
     `/v3/users/me/billing/subscriptions/${encodeURIComponent(subscriptionId)}/cancel`,
     { method: "POST", body: "{}" },
   );
 
-const fromBase64 = (value) =>
-  Uint8Array.from(atob(value.replace(/-/g, "+").replace(/_/g, "/")), (c) =>
-    c.charCodeAt(0),
+export const deletePasskey = (user, credentialId) =>
+  requestWithPasskey(
+    user,
+    `/v3/users/me/passkeys/${encodeURIComponent(credentialId)}`,
+    { method: "DELETE" },
   );
 
-const toBase64 = (value) =>
-  btoa(String.fromCharCode(...new Uint8Array(value)))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-
-export async function createPasskey(user) {
+export async function createPasskey(user, name = "Passkey") {
   const options = await request(user, "/v3/users/me/passkeys/options", {
     method: "POST",
     body: "{}",
   });
 
-  const credential = await navigator.credentials.create({
-    publicKey: {
-      ...options.publicKey,
-      challenge: fromBase64(options.publicKey.challenge),
-      user: {
-        ...options.publicKey.user,
-        id: fromBase64(options.publicKey.user.id),
-      },
-    },
-  });
-
-  if (!credential?.response?.getPublicKey)
-    throw new Error("This browser cannot export a passkey public key.");
+  const { startRegistration } = await import("@simplewebauthn/browser");
+  const response = await startRegistration({ optionsJSON: options.publicKey });
 
   return request(user, "/v3/users/me/passkeys", {
     method: "POST",
     body: JSON.stringify({
       challengeId: options.challengeId,
-      id: credential.id,
-      rawId: toBase64(credential.rawId),
-      clientDataJSON: toBase64(credential.response.clientDataJSON),
-      publicKey: toBase64(credential.response.getPublicKey()),
+      name,
+      response,
     }),
   });
 }
 
 export const getListPasskeys = (user) =>
   request(user, "/v3/users/me/passkeys", { method: "GET" });
+
+async function publicRequest(path, options = {}) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: { "Content-Type": "application/json", ...options.headers },
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok)
+    throw new Error(data.error_description || data.error || "Request failed");
+  return data;
+}
+
+export async function signInWithPasskey() {
+  const { startAuthentication } = await import("@simplewebauthn/browser");
+  const options = await publicRequest("/v3/passkeys/login/options", {
+    method: "POST",
+    body: "{}",
+  });
+  const response = await startAuthentication({ optionsJSON: options.publicKey });
+  const result = await publicRequest("/v3/passkeys/login", {
+    method: "POST",
+    body: JSON.stringify({ challengeId: options.challengeId, response }),
+  });
+  return result.token;
+}

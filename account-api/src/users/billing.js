@@ -2,6 +2,7 @@ import { db, FieldValue } from "../firebase.js";
 import { ApiError } from "../lib/errors.js";
 import { send } from "../lib/http.js";
 import { verifyBearerToken } from "../auth/security.js";
+import { requirePasskeyVerification } from "./passkeys.js";
 
 const billingFields = [
   "name",
@@ -93,7 +94,7 @@ export async function getBilling(req, res) {
 }
 
 export async function createBilling(req, res) {
-  const token = await verifyBearerToken(req);
+  const token = await requirePasskeyVerification(req);
   const ref = billingRef(token.uid);
   const snapshot = await ref.get();
   if (snapshot.exists)
@@ -109,7 +110,7 @@ export async function createBilling(req, res) {
 }
 
 export async function updateBilling(req, res) {
-  const token = await verifyBearerToken(req);
+  const token = await requirePasskeyVerification(req);
   const update = {};
   for (const field of billingFields) {
     if (req.body?.[field] === undefined) continue;
@@ -138,7 +139,7 @@ export async function listPaymentMethods(req, res) {
 }
 
 export async function addPaymentMethod(req, res) {
-  const token = await verifyBearerToken(req);
+  const token = await requirePasskeyVerification(req);
   const body = req.body || {};
   if (typeof body.providerPaymentMethodId !== "string" || !body.providerPaymentMethodId.trim())
     throw new ApiError("invalid_request", "A provider payment-method token is required.", 400);
@@ -161,7 +162,7 @@ export async function addPaymentMethod(req, res) {
 }
 
 export async function removePaymentMethod(req, res) {
-  const token = await verifyBearerToken(req);
+  const token = await requirePasskeyVerification(req);
   const ref = userCollection(token.uid, "paymentMethods").doc(String(req.params.paymentMethodId || ""));
   const snapshot = await ref.get();
   if (!snapshot.exists || snapshot.data().deletedAt != null)
@@ -189,7 +190,7 @@ export async function listSubscriptions(req, res) {
 }
 
 export async function cancelSubscription(req, res) {
-  const token = await verifyBearerToken(req);
+  const token = await requirePasskeyVerification(req);
   const ref = userCollection(token.uid, "subscriptions").doc(String(req.params.subscriptionId || ""));
   const snapshot = await ref.get();
   if (!snapshot.exists)

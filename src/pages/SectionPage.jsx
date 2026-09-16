@@ -44,6 +44,7 @@ function PasskeysCard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [notice, setNotice] = useState("");
+  const [name, setName] = useState("My passkey");
   const [busy, setBusy] = useState(false);
   const [passkeys, setPasskeys] = useState([]);
   const [loadError, setLoadError] = useState("");
@@ -87,7 +88,7 @@ function PasskeysCard() {
             setNotice("");
             try {
               const { createPasskey } = await import("../lib/accountApi.js");
-              await createPasskey(user);
+              await createPasskey(user, name);
               setNotice("Passkey added successfully.");
               await loadPasskeys();
             } catch (err) {
@@ -100,6 +101,15 @@ function PasskeysCard() {
         >
           {busy ? "Adding…" : "Add a passkey"}
         </button>
+
+        <input
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          maxLength={80}
+          placeholder="Passkey name"
+          className="mt-3 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 sm:max-w-xs"
+          aria-label="Passkey name"
+        />
 
         {loadError && (
           <p className="mt-3 text-xs text-red-600 dark:text-red-400">
@@ -118,7 +128,7 @@ function PasskeysCard() {
               <Row
                 key={key.id}
                 icon={KeyRound}
-                title={key.id}
+                title={key.name || "Passkey"}
                 description={
                   "Added on " +
                   new Date(key.createdAt).toLocaleString("en-US", {

@@ -1,17 +1,14 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   CalendarDays,
   CheckCircle2,
   Mail,
-  Pencil,
   Phone,
   ShieldAlert,
   UserRound,
-  X,
 } from "lucide-react";
 import { Card, Row } from "../components/Card";
-import Spinner from "../components/Spinner";
-import FormNotice from "../components/FormNotice";
 import { useAuth } from "../context/AuthContext";
 import { friendlyAuthError } from "../lib/authErrors";
 
@@ -40,40 +37,9 @@ function initialsFor(name, email) {
 }
 
 function ProfileCard() {
-  const { user, profile, saveProfile, resendVerificationEmail } = useAuth();
-  const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(user?.displayName || "");
-  const [phone, setPhone] = useState(profile?.phone || "");
-  const [birthday, setBirthday] = useState(profile?.birthday || "");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const { user, profile, resendVerificationEmail } = useAuth();
+  const navigate = useNavigate();
   const [verifyNotice, setVerifyNotice] = useState("");
-
-  function startEditing() {
-    setName(user?.displayName || "");
-    setPhone(profile?.phone || "");
-    setBirthday(profile?.birthday || "");
-    setError("");
-    setEditing(true);
-  }
-
-  async function handleSave(e) {
-    e.preventDefault();
-    setSaving(true);
-    setError("");
-    try {
-      await saveProfile({
-        displayName: name.trim(),
-        phone: phone.trim(),
-        birthday,
-      });
-      setEditing(false);
-    } catch (err) {
-      setError(friendlyAuthError(err));
-    } finally {
-      setSaving(false);
-    }
-  }
 
   async function handleResend() {
     setVerifyNotice("");
@@ -142,93 +108,32 @@ function ProfileCard() {
                 </p>
               )}
             </div>
-            {!editing && (
-              <button
-                onClick={startEditing}
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-blue-200 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50 dark:border-blue-900/60 dark:text-blue-400 dark:hover:bg-blue-500/10"
-              >
-                <Pencil size={15} /> Edit profile
-              </button>
-            )}
-          </div>
-
-          {editing ? (
-            <form
-              onSubmit={handleSave}
-              className="mt-6 space-y-4 border-t border-slate-100 pt-5 dark:border-slate-800"
+            <button
+              type="button"
+              onClick={() => navigate("/account/edit")}
+              className="inline-flex items-center justify-center rounded-full border border-blue-200 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50 dark:border-blue-900/60 dark:text-blue-400 dark:hover:bg-blue-500/10"
             >
-              {error && <FormNotice>{error}</FormNotice>}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400">
-                    Full name
-                  </label>
-                  <input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="mt-1.5 h-11 w-full rounded-xl border border-slate-300 bg-white px-3.5 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400">
-                    Phone number
-                  </label>
-                  <input
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+63 9XX XXX XXXX"
-                    className="mt-1.5 h-11 w-full rounded-xl border border-slate-300 bg-white px-3.5 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400">
-                    Birthday
-                  </label>
-                  <input
-                    type="date"
-                    value={birthday}
-                    onChange={(e) => setBirthday(e.target.value)}
-                    className="mt-1.5 h-11 w-full rounded-xl border border-slate-300 bg-white px-3.5 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-                  />
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-                >
-                  {saving ? <Spinner size={16} /> : "Save changes"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditing(false)}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-slate-300 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                >
-                  <X size={15} /> Cancel
-                </button>
-              </div>
-            </form>
-          ) : (
-            <div className="mt-6 grid border-t border-slate-100 pt-5 dark:border-slate-800 sm:grid-cols-2 lg:grid-cols-4">
-              <Info
-                icon={UserRound}
-                label="Full name"
-                value={user?.displayName || "Not set"}
-              />
-              <Info icon={Mail} label="Email address" value={user?.email} />
-              <Info
-                icon={Phone}
-                label="Phone number"
-                value={profile?.phone || "Not set"}
-              />
-              <Info
-                icon={CalendarDays}
-                label="Birthday"
-                value={profile?.birthday || "Not set"}
-              />
-            </div>
-          )}
+              Edit account
+            </button>
+          </div>
+          <div className="mt-6 grid border-t border-slate-100 pt-5 dark:border-slate-800 sm:grid-cols-2 lg:grid-cols-4">
+            <Info
+              icon={UserRound}
+              label="Full name"
+              value={user?.displayName || "Not set"}
+            />
+            <Info icon={Mail} label="Email address" value={user?.email} />
+            <Info
+              icon={Phone}
+              label="Phone number"
+              value={profile?.phone || "Not set"}
+            />
+            <Info
+              icon={CalendarDays}
+              label="Birthday"
+              value={profile?.birthday || "Not set"}
+            />
+          </div>
         </div>
       </Card>
     </>

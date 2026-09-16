@@ -1,5 +1,6 @@
 import { db, FieldValue } from "../firebase.js";
 import { verifyBearerToken } from "../auth/security.js";
+import { requirePasskeyVerification } from "./passkeys.js";
 import { send } from "../lib/http.js";
 
 export async function getProfile(req, res) {
@@ -15,9 +16,9 @@ export async function getProfile(req, res) {
 }
 
 export async function updateProfile(req, res) {
-  const d = await verifyBearerToken(req),
+  const d = await requirePasskeyVerification(req),
     a = {};
-  for (const f of ["displayName", "photoURL", "locale", "timezone"])
+  for (const f of ["displayName", "photoURL", "locale", "timezone", "zoneinfo", "location"])
     if (typeof req.body?.[f] === "string" && req.body[f].length <= 2048)
       a[f] = req.body[f].trim();
   if (!Object.keys(a).length)

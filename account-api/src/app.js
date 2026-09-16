@@ -10,7 +10,7 @@ import {
 } from "./oauth/clients.js";
 import { userInfo } from "./oauth/userinfo.js";
 import { getProfile, updateProfile } from "./users/profile.js";
-import { deletePasskey, listPasskeys, passkeyOptions, registerPasskey } from "./users/passkeys.js";
+import { deletePasskey, listPasskeys, passkeyLogin, passkeyLoginOptions, passkeyOptions, passkeyStepUpOptions, registerPasskey, verifyPasskeyStepUp } from "./users/passkeys.js";
 import { listSessions, revokeOtherSessions, revokeSession, touchSession } from "./users/sessions.js";
 import { listAuthorizationSessions, revokeAuthorizationSession } from "./users/authorizationSessions.js";
 import {
@@ -87,7 +87,7 @@ app.use((req, res, next) => {
   if (origin && config.corsOrigins.has(origin)) {
     res.set("Access-Control-Allow-Origin", origin);
     res.set("Vary", "Origin");
-    res.set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Device-Session");
+    res.set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Device-Session, X-Passkey-Verification");
     // DELETE was missing here even though passkeys/sessions below expose
     // DELETE routes — any browser call to those would fail preflight.
     res.set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
@@ -132,6 +132,10 @@ app.post("/v3/users/me/passkeys/options", passkeyOptions);
 app.get("/v3/users/me/passkeys", listPasskeys);
 app.post("/v3/users/me/passkeys", registerPasskey);
 app.delete("/v3/users/me/passkeys/:credentialId", deletePasskey);
+app.post("/v3/passkeys/login/options", passkeyLoginOptions);
+app.post("/v3/passkeys/login", passkeyLogin);
+app.post("/v3/users/me/passkeys/verify/options", passkeyStepUpOptions);
+app.post("/v3/users/me/passkeys/verify", verifyPasskeyStepUp);
 app.get("/v3/users/me/sessions", listSessions);
 app.post("/v3/users/me/sessions", touchSession);
 app.delete("/v3/users/me/sessions", revokeOtherSessions);

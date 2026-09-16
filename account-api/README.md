@@ -25,6 +25,13 @@ Firebase Auth blocking triggers such as `beforeUserCreated` and `beforeUserSigne
 - `DELETE /v3/users/me/sessions/:sessionId`
 - `GET /v3/users/me/authorization-sessions`
 - `DELETE /v3/users/me/authorization-sessions/:sessionId`
+- `POST /v3/users/me/passkeys/options`
+- `GET|POST /v3/users/me/passkeys`
+- `DELETE /v3/users/me/passkeys/:credentialId`
+- `POST /v3/users/me/passkeys/verify/options`
+- `POST /v3/users/me/passkeys/verify`
+- `POST /v3/passkeys/login/options`
+- `POST /v3/passkeys/login`
 - `GET|POST|PATCH /v3/users/me/billing`
 - `GET|POST /v3/users/me/billing/payment-methods`
 - `DELETE /v3/users/me/billing/payment-methods/:paymentMethodId`
@@ -49,6 +56,10 @@ Set these in Vercel Project Settings → Environment Variables:
 - `FIREBASE_PRIVATE_KEY`
 - `CORS_ORIGINS` (optional comma-separated allowlist; defaults to the production
   account site and Vite's local development origin)
+- `ACCOUNT_ORIGIN` (the exact browser origin used for WebAuthn, such as
+  `https://account.sytacle.com`)
+- `WEBAUTHN_RP_ID` (optional relying-party ID; defaults to the hostname of
+  `ACCOUNT_ORIGIN`)
 
 `FIREBASE_PRIVATE_KEY` may contain literal `\\n` sequences; the application converts them to newlines.
 

@@ -2,6 +2,7 @@ import { db, FieldValue, Timestamp } from "../firebase.js";
 import { ApiError } from "../lib/errors.js";
 import { send } from "../lib/http.js";
 import { verifyBearerToken, verifyRole } from "../auth/security.js";
+import { requirePasskeyVerification } from "./passkeys.js";
 
 const productCollection = () => db.collection("subscriptionProducts");
 const itemCollection = (productId) =>
@@ -234,7 +235,9 @@ export async function updateSubscriptionConfig(req, res) {
 }
 
 export async function createSubscription(req, res) {
-  const token = await verifyRole(req, ["developer", "admin"]);
+  const token = await requirePasskeyVerification(req);
+  if (token.admin !== true && !["developer", "admin"].includes(token.role))
+    throw new ApiError("permission_denied", "Developer or admin role required.", 403);
   const billing = await db.collection("users").doc(token.uid).collection("billing").doc("account").get();
   if (!billing.exists)
     throw new ApiError("billing_account_required", "Create a billing account before subscribing.", 409);

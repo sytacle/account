@@ -9,6 +9,7 @@ import { navItems } from './data/account'
 // on first visit and cached by the browser after that. Only the shell
 // (Header, Sidebar, ProtectedRoute, nav data) ships in the entry bundle.
 const AccountPage   = lazy(() => import('./pages/AccountPage'))
+const EditAccountPage = lazy(() => import('./pages/EditAccountPage'))
 const SectionPage   = lazy(() => import('./pages/SectionPage'))
 const LoginPage     = lazy(() => import('./pages/LoginPage'))
 const AuthorizePage = lazy(() => import('./pages/AuthorizePage'))
@@ -45,7 +46,7 @@ function AccountLayout() {
               boundary would blank the whole page on every section switch.
             */}
             <Suspense fallback={<RouteFallback />}>
-              {active === 'account' ? <AccountPage /> : <SectionPage type={active} />}
+              {active === 'account' ? <AccountPage /> : active === 'edit' ? <EditAccountPage /> : <SectionPage type={active} />}
             </Suspense>
           </div>
         </main>
