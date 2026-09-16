@@ -52,7 +52,7 @@ export default function Header({ onMenu }) {
       ? Moon
       : theme === "light"
         ? Sun
-        : Monitor;
+        : Sun;
 
   async function handleSignOut() {
     setMenuOpen(false);
