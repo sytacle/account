@@ -46,6 +46,7 @@ function PasskeysCard() {
   const [notice, setNotice] = useState("");
   const [name, setName] = useState("My passkey");
   const [busy, setBusy] = useState(false);
+  const [showNameDialog, setShowNameDialog] = useState(false);
   const [deletingId, setDeletingId] = useState("");
   const [passkeys, setPasskeys] = useState([]);
   const [loadError, setLoadError] = useState("");
@@ -100,34 +101,87 @@ function PasskeysCard() {
         </p>
         <button
           type="button"
+
           disabled={!supportsPasskeys || busy}
-          onClick={async () => {
-            setBusy(true);
-            setNotice("");
-            try {
-              const { createPasskey } = await import("../lib/accountApi.js");
-              await createPasskey(user, name);
-              setNotice("Passkey added successfully.");
-              await loadPasskeys();
-            } catch (err) {
-              setNotice(friendlyAuthError(err));
-            } finally {
-              setBusy(false);
-            }
+          onClick={() => {
+            setName("My passkey");
+            setShowNameDialog(true);
           }}
           className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-full bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
         >
           {busy ? "Adding…" : "Add a passkey"}
         </button>
 
-        <input
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          maxLength={80}
-          placeholder="Passkey name"
-          className="mt-3 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 sm:max-w-xs"
-          aria-label="Passkey name"
-        />
+        {showNameDialog && (
+          <div
+            className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 p-4"
+            role="presentation"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget && !busy)
+                setShowNameDialog(false);
+            }}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="passkey-name-title"
+              className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-xl dark:border-slate-800 dark:bg-slate-900"
+            >
+              <h3
+                id="passkey-name-title"
+                className="text-lg font-semibold text-slate-900 dark:text-slate-100"
+              >
+                Name your passkey
+              </h3>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                Use a name that helps you recognize this device later.
+              </p>
+              <input
+                autoFocus
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                maxLength={80}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") event.currentTarget.form?.requestSubmit();
+                }}
+                className="mt-4 h-11 w-full rounded-xl border border-slate-300 bg-white px-3.5 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+              />
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => setShowNameDialog(false)}
+                  className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-60 dark:border-slate-700 dark:text-slate-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={busy || !name.trim()}
+                  onClick={async () => {
+                    setBusy(true);
+                    setNotice("");
+                    setLoadError("");
+                    try {
+                      const { createPasskey } = await import("../lib/accountApi.js");
+                      await createPasskey(user, name.trim());
+                      setShowNameDialog(false);
+                      setNotice("Passkey added successfully.");
+                      await loadPasskeys();
+                    } catch (err) {
+                      setNotice(friendlyAuthError(err));
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                  className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                >
+                  {busy ? "Adding…" : "Continue"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {loadError && (
           <p className="mt-3 text-xs text-red-600 dark:text-red-400">
