@@ -8,7 +8,7 @@ export const config = {
   corsOrigins: new Set(
     (
       process.env.CORS_ORIGINS ||
-      "https://my.sytacle.com,https://sytacle.com,https://www.sytacle.com,https://console.cloud.sytacle.com,https://cloud.sytacle.com,http://localhost:5173"
+      "https://my.sytacle.com,https://sytacle.com,https://www.sytacle.com,https://console.cloud.sytacle.com,https://cloud.sytacle.com,http://localhost:5173,http://localhost:3000"
     )
       .split(",")
       .map((origin) => origin.trim())
@@ -18,7 +18,7 @@ export const config = {
     origins: new Set(
       (
         process.env.SSO_ALLOWED_ORIGINS ||
-        "https://sytacle.com,https://my.sytacle.com"
+        "https://sytacle.com,https://my.sytacle.com,http://localhost:3000,http://localhost:5173"
       )
         .split(",")
         .map((origin) => origin.trim())

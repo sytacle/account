@@ -166,8 +166,8 @@ to send to the registered `redirect_uri`.
 
 This app supports a lightweight Meta/Google-style silent SSO layer without introducing a new auth system. The pattern is:
 
-- `https://sytacle.com` is the session hub.
-- `https://my.sytacle.com` and other `*.sytacle.com` domains act as relying sites.
+- `https://my.sytacle.com` is the session hub.
+- `https://sytacle.com` and other `*.sytacle.com` domains act as relying sites.
 - The hub owns the browser’s real Firebase Auth session.
 - A relying site loads a hidden iframe to the hub, asks it for a short-lived Firebase custom token, then calls `signInWithCustomToken` locally.
 - The API verifies the hub Firebase ID token, then mints a custom token bound to the same Firebase user.
@@ -177,7 +177,7 @@ This preserves the current Firebase/Auth setup and OAuth provider flow already u
 ### Architecture
 
 1. User signs in on the hub domain with the existing Firebase Auth flow.
-2. A relying domain opens a hidden iframe to `https://sytacle.com/sso/bridge?origin=<relying-origin>&state=<random>`.
+2. A relying domain opens a hidden iframe to `https://my.sytacle.com/sso/bridge?origin=<relying-origin>&state=<random>`.
 3. The bridge checks the requesting origin is allowed, reads the current Firebase user, and calls the backend exchange endpoint.
 4. The API verifies the Firebase ID token server-side and responds with `{ custom_token }`.
 5. The relying domain calls Firebase `signInWithCustomToken(auth, token)`.
@@ -206,8 +206,8 @@ Body:
 ```json
 {
   "id_token": "<firebase-id-token>",
-  "origin": "https://my.sytacle.com",
-  "target_origin": "https://sytacle.com"
+  "origin": "https://sytacle.com",
+  "target_origin": "https://my.sytacle.com"
 }
 ```
 
@@ -230,7 +230,7 @@ SSO_ALLOWED_ORIGINS=https://sytacle.com,https://my.sytacle.com,https://app.sytac
 Set the hub on the client app:
 
 ```env
-VITE_SSO_HUB_ORIGIN=https://sytacle.com
+VITE_SSO_HUB_ORIGIN=https://my.sytacle.com
 ```
 
 ### Browser caveat
