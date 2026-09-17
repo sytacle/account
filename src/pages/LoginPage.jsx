@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import {
+  Navigate,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
 import { ArrowRight, MailCheck, ShieldCheck } from "lucide-react";
 import Logo from "../components/Logo";
 import Spinner from "../components/Spinner";
@@ -69,6 +74,27 @@ export default function LoginPage() {
   const [notice, setNotice] = useState("");
   const [mfaCode, setMfaCode] = useState("");
   const passwordlessCompletionStarted = useRef(false);
+  const [searchParams] = useSearchParams();
+
+  function getSafeReturnTo(rawValue, fallback = "/") {
+    if (!rawValue) return fallback;
+
+    let decoded;
+    try {
+      decoded = decodeURIComponent(rawValue);
+    } catch {
+      return fallback; // malformed encoding — don't trust it
+    }
+
+    // Reject protocol-relative ("//evil.com") and anything with a scheme
+    // ("javascript:...", "https:evil.com") before the first "/"
+    if (/^\/\/|^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(decoded)) return fallback;
+
+    // Must be a same-app relative path
+    if (!decoded.startsWith("/")) return fallback;
+
+    return decoded;
+  }
 
   useEffect(() => {
     const savedEmail = window.localStorage.getItem(PASSWORDLESS_EMAIL_KEY);
@@ -81,12 +107,15 @@ export default function LoginPage() {
       passwordlessCompletionStarted.current
     )
       return;
+    
     passwordlessCompletionStarted.current = true;
     const savedEmail = window.localStorage.getItem(PASSWORDLESS_EMAIL_KEY);
+    
     if (!savedEmail) {
       setError("Enter the email address that received this sign-in link.");
       return;
     }
+    
     setBusy("email");
     completePasswordlessSignIn(savedEmail, window.location.href)
       .then(() => {
@@ -103,6 +132,9 @@ export default function LoginPage() {
         <Spinner label="Checking your session…" />
       </div>
     );
+
+  const returnTo = getSafeReturnTo(searchParams.get("returnTo"));
+
   if (isAuthenticated) return <Navigate to={returnTo} replace />;
 
   async function withBusy(key, fn) {
@@ -139,6 +171,7 @@ export default function LoginPage() {
         navigate(returnTo, { replace: true });
         return;
       }
+      
       const continueUrl = new URL("/account/login", window.location.origin);
       continueUrl.searchParams.set("returnTo", returnTo);
       await sendPasswordlessSignInLink(email, continueUrl.toString());
@@ -208,7 +241,11 @@ export default function LoginPage() {
                     disabled={busy === "mfa-send"}
                     className="h-11 w-full rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white disabled:opacity-60"
                   >
-                    {busy === "mfa-send" ? <Spinner size={17} /> : "Send verification code"}
+                    {busy === "mfa-send" ? (
+                      <Spinner size={17} />
+                    ) : (
+                      "Send verification code"
+                    )}
                   </button>
                 ) : (
                   <div className="space-y-3">
@@ -227,7 +264,11 @@ export default function LoginPage() {
                       disabled={busy === "mfa-verify" || !mfaCode}
                       className="h-11 w-full rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white disabled:opacity-60"
                     >
-                      {busy === "mfa-verify" ? <Spinner size={17} /> : "Verify and sign in"}
+                      {busy === "mfa-verify" ? (
+                        <Spinner size={17} />
+                      ) : (
+                        "Verify and sign in"
+                      )}
                     </button>
                   </div>
                 )}
@@ -245,95 +286,99 @@ export default function LoginPage() {
               </div>
             )}
             <div className={mfaRequired ? "hidden" : "space-y-4"}>
-            <div>
-              <label
-                className="block text-sm font-medium text-slate-800 dark:text-slate-200"
-                htmlFor="email"
-              >
-                Email address
-              </label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@example.com"
-                className="mt-2 h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-blue-500/20"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={busy === "email"}
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-60"
-            >
-              {busy === "email" ? (
-                <Spinner size={18} />
-              ) : (
-                <>
-                  <MailCheck size={17} /> Email me a sign-in link{" "}
-                  <ArrowRight size={17} />
-                </>
-              )}
-            </button>
-            <p className="text-center text-xs leading-5 text-slate-500 dark:text-slate-400">
-              New to Sytacle? We’ll create your account after you verify your
-              email.
-            </p>
-            <div className="flex items-center gap-3 text-xs text-slate-400 dark:text-slate-500">
-              <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
-              OR
-              <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
-            </div>
-            <div className="space-y-3">
+              <div>
+                <label
+                  className="block text-sm font-medium text-slate-800 dark:text-slate-200"
+                  htmlFor="email"
+                >
+                  Email address
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="you@example.com"
+                  className="mt-2 h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-blue-500/20"
+                />
+              </div>
               <button
-                type="button"
-                disabled={busy === "passkey"}
-                onClick={handlePasskeySignIn}
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 text-sm font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-60 dark:border-blue-900/60 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20"
+                type="submit"
+                disabled={busy === "email"}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-60"
               >
-                {busy === "passkey" ? <Spinner size={18} /> : <ShieldCheck size={17} />}
-                Sign in with passkey
-              </button>
-              <button
-                type="button"
-                disabled={busy === "github"}
-                onClick={() =>
-                  withBusy("github", async () => {
-                    await signInWithGithub();
-                    navigate(returnTo, { replace: true });
-                  })
-                }
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
-              >
-                {busy === "github" ? (
+                {busy === "email" ? (
                   <Spinner size={18} />
                 ) : (
                   <>
-                    <GithubMark /> Continue with GitHub
+                    <MailCheck size={17} /> Email me a sign-in link{" "}
+                    <ArrowRight size={17} />
                   </>
                 )}
               </button>
-              <button
-                type="button"
-                disabled={busy === "google"}
-                onClick={() =>
-                  withBusy("google", async () => {
-                    await signInWithGoogle();
-                    navigate(returnTo, { replace: true });
-                  })
-                }
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
-              >
-                {busy === "google" ? (
-                  <Spinner size={18} />
-                ) : (
-                  <>
-                    <GoogleMark /> Continue with Google
-                  </>
-                )}
-              </button>
-            </div>
+              <p className="text-center text-xs leading-5 text-slate-500 dark:text-slate-400">
+                New to Sytacle? We’ll create your account after you verify your
+                email.
+              </p>
+              <div className="flex items-center gap-3 text-xs text-slate-400 dark:text-slate-500">
+                <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+                OR
+                <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+              </div>
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  disabled={busy === "passkey"}
+                  onClick={handlePasskeySignIn}
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 text-sm font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-60 dark:border-blue-900/60 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20"
+                >
+                  {busy === "passkey" ? (
+                    <Spinner size={18} />
+                  ) : (
+                    <ShieldCheck size={17} />
+                  )}
+                  Sign in with passkey
+                </button>
+                <button
+                  type="button"
+                  disabled={busy === "github"}
+                  onClick={() =>
+                    withBusy("github", async () => {
+                      await signInWithGithub();
+                      navigate(returnTo, { replace: true });
+                    })
+                  }
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+                >
+                  {busy === "github" ? (
+                    <Spinner size={18} />
+                  ) : (
+                    <>
+                      <GithubMark /> Continue with GitHub
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy === "google"}
+                  onClick={() =>
+                    withBusy("google", async () => {
+                      await signInWithGoogle();
+                      navigate(returnTo, { replace: true });
+                    })
+                  }
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+                >
+                  {busy === "google" ? (
+                    <Spinner size={18} />
+                  ) : (
+                    <>
+                      <GoogleMark /> Continue with Google
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </form>
           <p className="mt-8 text-center text-xs leading-5 text-slate-400 dark:text-slate-600">
