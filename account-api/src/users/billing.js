@@ -24,6 +24,10 @@ function billingAccounts(uid) {
   return billingRef(uid).collection("accounts");
 }
 
+function legacyBillingAccounts(uid) {
+  return db.collection("users").doc(uid).collection("billing").collection("accounts");
+}
+
 function activeBillingRef(uid) {
   return db.collection("users").doc(uid).collection("billing").doc("settings");
 }
@@ -120,8 +124,15 @@ async function activeAccountId(uid, accounts) {
 
 export async function getBilling(req, res) {
   const token = await verifyBearerToken(req);
-  const accountsSnapshot = await billingAccounts(token.uid).get();
-  let accounts = accountsSnapshot.docs;
+  const [accountsSnapshot, legacyAccountsSnapshot] = await Promise.all([
+    billingAccounts(token.uid).get(),
+    legacyBillingAccounts(token.uid).get(),
+  ]);
+  const accountsById = new Map(accountsSnapshot.docs.map((account) => [account.id, account]));
+  for (const account of legacyAccountsSnapshot.docs) {
+    if (!accountsById.has(account.id)) accountsById.set(account.id, account);
+  }
+  let accounts = [...accountsById.values()];
   const legacy = await billingRef(token.uid).get();
   if (legacy.exists) accounts = [legacy, ...accounts];
   const activeId = await activeAccountId(token.uid, accounts);
