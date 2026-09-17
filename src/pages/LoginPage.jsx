@@ -67,7 +67,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const returnTo = getSafeReturnTo(searchParams.get("returnTo"));
-  
+
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState("");
@@ -76,7 +76,7 @@ export default function LoginPage() {
   const passwordlessCompletionStarted = useRef(false);
   const [searchParams] = useSearchParams();
 
-  function getSafeReturnTo(rawValue, fallback = "/") {
+  function getSafeReturnTo(rawValue, fallback = "/account") {
     if (!rawValue) return fallback;
 
     let decoded;
@@ -107,15 +107,15 @@ export default function LoginPage() {
       passwordlessCompletionStarted.current
     )
       return;
-    
+
     passwordlessCompletionStarted.current = true;
     const savedEmail = window.localStorage.getItem(PASSWORDLESS_EMAIL_KEY);
-    
+
     if (!savedEmail) {
       setError("Enter the email address that received this sign-in link.");
       return;
     }
-    
+
     setBusy("email");
     completePasswordlessSignIn(savedEmail, window.location.href)
       .then(() => {
@@ -133,7 +133,18 @@ export default function LoginPage() {
       </div>
     );
 
-  if (isAuthenticated) return <Navigate to={returnTo} replace />;
+  const isExternal = /^https?:\/\//i.test(returnTo);
+
+  useEffect(() => {
+    if (isAuthenticated && isExternal) {
+      window.location.href = returnTo;
+    }
+  }, [isAuthenticated, isExternal, returnTo]);
+
+  if (isAuthenticated) {
+    if (isExternal) return null; // useEffect above handles the redirect
+    return <Navigate to={returnTo} replace />; // internal path — router handles it
+  }
 
   async function withBusy(key, fn) {
     setError("");
@@ -169,7 +180,7 @@ export default function LoginPage() {
         navigate(returnTo, { replace: true });
         return;
       }
-      
+
       const continueUrl = new URL("/account/login", window.location.origin);
       continueUrl.searchParams.set("returnTo", returnTo);
       await sendPasswordlessSignInLink(email, continueUrl.toString());
