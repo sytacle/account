@@ -9,7 +9,10 @@
     "deploy": "vercel --prod"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1134.0",
+    "@aws-sdk/s3-request-presigner": "^3.1134.0",
     "@simplewebauthn/server": "^14.0.2",
+    "cloudinary": "^2.11.0",
     "express": "^5.1.0",
     "express-rate-limit": "^8.2.1",
     "firebase-admin": "^13.6.0",

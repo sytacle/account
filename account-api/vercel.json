@@ -22,5 +22,11 @@
     "api/index.js": {
       "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/v3/cron/subscription-expirations",
+      "schedule": "0 3 * * *"
+    }
+  ]
 }

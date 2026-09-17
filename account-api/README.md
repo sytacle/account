@@ -21,6 +21,13 @@ Firebase Auth blocking triggers such as `beforeUserCreated` and `beforeUserSigne
 - `GET /v3/oauth/userinfo`
 - `GET /v3/users/me`
 - `PATCH /v3/users/me`
+- `GET /v3/users/me/storage`
+- `POST /v3/users/me/storage/upload-url`
+- `POST /v3/users/me/storage/complete`
+- `GET /v3/users/me/storage/:fileId/download`
+- `DELETE /v3/users/me/storage/:fileId`
+- `POST /v3/users/me/profile-image/signature`
+- `POST /v3/users/me/profile-image/complete`
 - `GET|POST|DELETE /v3/users/me/sessions`
 - `DELETE /v3/users/me/sessions/:sessionId`
 - `GET /v3/users/me/authorization-sessions`
@@ -61,10 +68,25 @@ Set these in Vercel Project Settings → Environment Variables:
   `https://account.sytacle.com`)
 - `WEBAUTHN_RP_ID` (optional relying-party ID; defaults to the hostname of
   `ACCOUNT_ORIGIN`)
+- `CRON_SECRET` (required by the daily subscription-expiration cron route)
+- `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, and
+  optional `R2_PUBLIC_URL` for account file storage
+- `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET`
+  for profile images
 
 `FIREBASE_PRIVATE_KEY` may contain literal `\\n` sequences; the application converts them to newlines.
 
 For local development, `GOOGLE_APPLICATION_CREDENTIALS` can also be used with Google Application Default Credentials.
+
+The Vercel cron job calls `/v3/cron/subscription-expirations` daily. It writes
+`subscription`, `subscriptionStartedAt`, and `subscriptionExpiresAt` to both
+Firebase Auth custom claims and `users/{uid}` in Firestore. Free plans renew in
+30-day cycles from the account creation date. Expired paid plans fall back to
+Free for the next 30-day cycle.
+
+Configure R2 bucket CORS to allow `PUT` from each account-app origin and expose
+the R2 public URL only if public file URLs are desired. Files remain private by
+default; downloads use short-lived signed URLs.
 
 ## Deploy
 

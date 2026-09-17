@@ -2,6 +2,7 @@ import { lazy, Suspense, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CalendarDays,
+  Camera,
   CheckCircle2,
   Mail,
   Phone,
@@ -11,6 +12,7 @@ import {
 import { Card, Row } from "../components/Card";
 import { useAuth } from "../context/AuthContext";
 import { friendlyAuthError } from "../lib/authErrors";
+import FormNotice from "../components/FormNotice";
 
 const SecurityCard = lazy(() =>
   import("./AccountCards").then(({ SecurityCard: Component }) => ({
@@ -34,6 +36,36 @@ function initialsFor(name, email) {
     return (parts[0][0] + (parts[1]?.[0] || "")).toUpperCase();
   }
   return (email || "?")[0].toUpperCase();
+}
+
+function ProfileImageControl({ user }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function upload(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setBusy(true); setError("");
+    try {
+      const { createProfileImageSignature, completeProfileImage } = await import("../lib/accountApi.js");
+      const signature = await createProfileImageSignature(user);
+      const body = new FormData();
+      body.append("file", file);
+      body.append("api_key", signature.apiKey);
+      body.append("timestamp", String(signature.timestamp));
+      body.append("folder", signature.folder);
+      body.append("signature", signature.signature);
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${signature.cloudName}/image/upload`, { method: "POST", body });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error?.message || "Profile image upload failed.");
+      await completeProfileImage(user, { secureUrl: result.secure_url, publicId: result.public_id, bytes: result.bytes });
+      await user.reload();
+      window.location.reload();
+    } catch (err) { setError(friendlyAuthError(err)); } finally { setBusy(false); }
+  }
+
+  return <div className="mt-3"><label className="inline-flex cursor-pointer items-center gap-2 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400"><Camera size={14} />{busy ? "Uploading..." : "Update profile photo"}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" onChange={upload} disabled={busy} /></label>{error && <div className="mt-2"><FormNotice>{error}</FormNotice></div>}</div>;
 }
 
 function ProfileCard() {
@@ -85,6 +117,7 @@ function ProfileCard() {
               <p className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">
                 {user?.email}
               </p>
+              <ProfileImageControl user={user} />
               {user?.emailVerified ? (
                 <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
                   <CheckCircle2 size={13} /> Verified

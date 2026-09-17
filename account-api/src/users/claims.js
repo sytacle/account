@@ -1,5 +1,6 @@
 import { auth } from "../firebase.js";
 const subs = new Set(["free", "pro", "business"]);
+const PLAN_PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
 
 export async function setUserClaims(uid, patch) {
   const u = await auth.getUser(uid);
@@ -23,7 +24,11 @@ export const setDeveloper = (uid, v) =>
 
 export async function setSubscription(uid, v) {
   if (!subs.has(v)) throw new Error("Invalid subscription.");
-  return setUserClaims(uid, { subscription: v });
+  return setUserClaims(uid, {
+    subscription: v,
+    subscriptionStartedAt: new Date().toISOString(),
+    subscriptionExpiresAt: new Date(Date.now() + PLAN_PERIOD_MS).toISOString(),
+  });
 }
 
 export const setPhoneVerified = (uid, v) =>

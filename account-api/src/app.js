@@ -43,6 +43,16 @@ import { verifyBearerToken } from "./auth/security.js";
 import { oauthError } from "./lib/http.js";
 import { config } from "./config.js";
 import { exchangeSsoToken, ssoCors } from "./sso.js";
+import { syncSubscriptionExpirations } from "./users/subscriptionExpiry.js";
+import {
+  completeCloudinaryProfileImage,
+  completeUpload,
+  createCloudinarySignature,
+  createUploadUrl,
+  deleteFile,
+  downloadFile,
+  listFiles,
+} from "./users/storage.js";
 
 const app = express();
 
@@ -133,6 +143,13 @@ app.get("/admin/check", async (req, res) => {
 });
 app.get("/v3/users/me", getProfile);
 app.patch("/v3/users/me", updateProfile);
+app.get("/v3/users/me/storage", listFiles);
+app.post("/v3/users/me/storage/upload-url", createUploadUrl);
+app.post("/v3/users/me/storage/complete", completeUpload);
+app.get("/v3/users/me/storage/:fileId/download", downloadFile);
+app.delete("/v3/users/me/storage/:fileId", deleteFile);
+app.post("/v3/users/me/profile-image/signature", createCloudinarySignature);
+app.post("/v3/users/me/profile-image/complete", completeCloudinaryProfileImage);
 app.post("/v3/users/me/passkeys/options", passkeyOptions);
 app.get("/v3/users/me/passkeys", listPasskeys);
 app.post("/v3/users/me/passkeys", registerPasskey);
@@ -169,6 +186,7 @@ app.post("/v3/admin/subscription-products/:productId/prices", createPrice);
 app.patch("/v3/admin/subscription-products/:productId/prices/:priceId", updatePrice);
 app.get("/v3/admin/subscription-configuration", getSubscriptionConfig);
 app.patch("/v3/admin/subscription-configuration", updateSubscriptionConfig);
+app.get("/v3/cron/subscription-expirations", syncSubscriptionExpirations);
 
 app.use((req, res) =>
   oauthError(res, "not_found", `No route for ${req.method} ${req.path}.`, 404),

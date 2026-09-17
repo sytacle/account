@@ -52,9 +52,94 @@ npm run dev
 **Requires the Account API:**
 - **Passkey verification** requires a WebAuthn verifier and relying-party configuration in the Account API before credentials can be enrolled.
 - **Payments** — billing accounts, subscriptions, payment methods, and purchase history use the Account API and Firestore.
+- **Data & storage** — account files use private Cloudflare R2 objects with short-lived signed upload/download URLs. File metadata and account totals are stored in Firestore.
+- **Profile photos** — profile images use signed Cloudinary uploads and are mirrored to Firebase Auth and the Firestore user document.
 
-**Illustrative only** (would need a backend beyond this frontend):
-- **Data & storage** — the current page is a placeholder for future storage features.
+## Data & storage
+
+The `/account/storage` page supports:
+
+- Uploading files to Cloudflare R2.
+- Listing, downloading, and deleting account files.
+- Tracking file name, provider, object key, MIME type, size, public URL, and timestamps.
+- Showing the total file count and total stored bytes for the account.
+- Uploading profile photos to Cloudinary from the account profile card.
+
+Files are private by default. Downloads use short-lived signed URLs. Profile
+images are stored as a managed `profile-image` record and are included in the
+account storage totals.
+
+The Account API exposes these storage routes:
+
+```text
+GET    /v3/users/me/storage
+POST   /v3/users/me/storage/upload-url
+POST   /v3/users/me/storage/complete
+GET    /v3/users/me/storage/:fileId/download
+DELETE /v3/users/me/storage/:fileId
+POST   /v3/users/me/profile-image/signature
+POST   /v3/users/me/profile-image/complete
+```
+
+## Account API deployment
+
+Install and run the API from its own directory:
+
+```bash
+cd account-api
+npm install
+npm run lint
+npm run deploy
+```
+
+Configure these server-side environment variables in Vercel. Never expose the
+R2 secret or Cloudinary API secret as `VITE_*` variables.
+
+```env
+FIREBASE_PROJECT_ID=
+FIREBASE_CLIENT_EMAIL=
+FIREBASE_PRIVATE_KEY=
+
+R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
+R2_BUCKET=
+R2_PUBLIC_URL=
+
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+
+CRON_SECRET=
+```
+
+Configure R2 bucket CORS to allow `PUT` requests from each deployed account-app
+origin. The upload flow signs the request through the API, uploads directly
+from the browser to R2, and then records the verified object metadata in
+Firestore at:
+
+```text
+users/{uid}/storage/files/items/{fileId}
+users/{uid}/storage/summary
+```
+
+The profile image metadata uses the fixed `profile-image` file ID. The API
+updates the Firebase Auth `photoURL` and the user's Firestore `photoURL` after
+Cloudinary confirms the upload.
+
+## Subscription expiration
+
+Vercel runs the subscription expiration job daily at 03:00 UTC through:
+
+```text
+GET /v3/cron/subscription-expirations
+```
+
+The job synchronizes `subscription`, `subscriptionStartedAt`, and
+`subscriptionExpiresAt` between Firebase Auth custom claims and the user's
+Firestore document. Free plans renew in 30-day cycles from account creation;
+expired paid plans fall back to Free for the next 30-day cycle. Set `CRON_SECRET`
+in Vercel so the scheduled route can authenticate its request.
 
 ## Routes
 

@@ -3,6 +3,7 @@ import { ApiError } from "../lib/errors.js";
 import { send } from "../lib/http.js";
 import { verifyBearerToken, verifyRole } from "../auth/security.js";
 import { requirePasskeyVerification } from "./passkeys.js";
+import { setUserClaims } from "./claims.js";
 
 const productCollection = () => db.collection("subscriptionProducts");
 const itemCollection = (productId) =>
@@ -272,6 +273,10 @@ export async function createSubscription(req, res) {
   else periodEnd.setDate(periodEnd.getDate() + 1);
 
   const ref = subscriptions.doc();
+  const status = priceSnapshot.data().trialDays > 0 ? "trialing" : "active";
+  const planKey = ["free", "pro", "business"].includes(productId)
+    ? productId
+    : ["free", "pro", "business"].find((plan) => productSnapshot.data().name?.toLowerCase().includes(plan)) || "pro";
   await ref.set({
     productId,
     productName: productSnapshot.data().name,
@@ -282,11 +287,21 @@ export async function createSubscription(req, res) {
     amount: priceSnapshot.data().amount,
     currency: priceSnapshot.data().currency,
     interval,
-    status: priceSnapshot.data().trialDays > 0 ? "trialing" : "active",
+    status,
     startedAt: FieldValue.serverTimestamp(),
     currentPeriodEnd: Timestamp.fromDate(periodEnd),
     cancelAtPeriodEnd: false,
     createdAt: FieldValue.serverTimestamp(),
   });
-  return send(res, 201, { subscription: { id: ref.id, status: priceSnapshot.data().trialDays > 0 ? "trialing" : "active" } });
+  await setUserClaims(token.uid, {
+    subscription: planKey,
+    subscriptionStartedAt: now.toISOString(),
+    subscriptionExpiresAt: periodEnd.toISOString(),
+  });
+  await db.collection("users").doc(token.uid).set({
+    subscription: planKey,
+    subscriptionStartedAt: Timestamp.fromDate(now),
+    subscriptionExpiresAt: Timestamp.fromDate(periodEnd),
+  }, { merge: true });
+  return send(res, 201, { subscription: { id: ref.id, status } });
 }

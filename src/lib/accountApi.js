@@ -211,6 +211,40 @@ export async function createPasskey(user, name = "Passkey") {
 export const getListPasskeys = (user) =>
   request(user, "/v3/users/me/passkeys", { method: "GET" });
 
+export const getStorage = (user) => request(user, "/v3/users/me/storage");
+
+export const createStorageUpload = (user, file) =>
+  requestWithPasskey(user, "/v3/users/me/storage/upload-url", {
+    method: "POST",
+    body: JSON.stringify({ name: file.name, contentType: file.type, size: file.size }),
+  });
+
+export const completeStorageUpload = (user, upload) =>
+  requestWithPasskey(user, "/v3/users/me/storage/complete", {
+    method: "POST",
+    body: JSON.stringify(upload),
+  });
+
+export const getStorageDownloadUrl = (user, fileId) =>
+  request(user, `/v3/users/me/storage/${encodeURIComponent(fileId)}/download`);
+
+export const deleteStorageFile = (user, fileId) =>
+  requestWithPasskey(user, `/v3/users/me/storage/${encodeURIComponent(fileId)}`, {
+    method: "DELETE",
+  });
+
+export const createProfileImageSignature = (user) =>
+  requestWithPasskey(user, "/v3/users/me/profile-image/signature", {
+    method: "POST",
+    body: "{}",
+  });
+
+export const completeProfileImage = (user, image) =>
+  requestWithPasskey(user, "/v3/users/me/profile-image/complete", {
+    method: "POST",
+    body: JSON.stringify(image),
+  });
+
 async function publicRequest(path, options = {}) {
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
