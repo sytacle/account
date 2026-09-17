@@ -1,6 +1,6 @@
-# Sytacle API — Vercel + Firebase
+# Sytacle Account API
 
-Vercel-ready version of the Sytacle production-oriented OAuth API.
+Vercel-ready version of the Sytacle production-oriented Account API.
 
 ## Architecture
 
@@ -8,8 +8,6 @@ Vercel-ready version of the Sytacle production-oriented OAuth API.
 - **Firebase Authentication** remains the identity provider.
 - **Firebase Admin SDK** verifies Firebase ID tokens and reads/writes Auth and Firestore.
 - **Firestore** stores OAuth clients, authorization codes, access tokens, refresh-token families, and user profiles.
-
-Firebase Auth blocking triggers such as `beforeUserCreated` and `beforeUserSignedIn` are **not Vercel Functions**. If you still need those triggers, deploy them separately with Firebase Cloud Functions. They are intentionally not imported by the Vercel entrypoint.
 
 ## Public routes
 
@@ -105,18 +103,17 @@ npm run deploy
 ## Example URLs
 
 ```text
-https://api.sytacle.com/v3/oauth/authorize
-https://api.sytacle.com/v3/oauth/token
-https://api.sytacle.com/v3/oauth/revoke
-https://api.sytacle.com/v3/oauth/userinfo
-https://api.sytacle.com/v3/users/me
+https://api.account.sytacle.com/v3/oauth/authorize
+https://api.account.sytacle.com/v3/oauth/token
+https://api.account.sytacle.com/v3/oauth/revoke
+https://api.account.sytacle.com/v3/oauth/userinfo
 ```
 
 ## Security notes
 
 The consent frontend calls the client lookup and authorization endpoints directly.
 Configure its `VITE_OAUTH_API_URL` value to this API's origin (for example,
-`https://api.sytacle.com`).
+`https://api.account.sytacle.com`).
 
 The OAuth implementation retains the existing controls: Authorization Code + mandatory PKCE S256, exact redirect URI matching, short-lived single-use authorization codes, hashed opaque tokens, refresh-token rotation, refresh-family revocation, hashed confidential-client secrets, no-store OAuth responses, Helmet security headers, and rate limiting.
 
