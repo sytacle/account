@@ -10,9 +10,9 @@ import { fallbackCountries, getCountries } from "../lib/countries";
 
 const billingFields = [["name", "Name"], ["email", "Billing email"], ["addressLine1", "Address"], ["city", "City"], ["state", "State / region"], ["postalCode", "Postal code"]];
 const subscriptionPlans = {
-  free: { name: "Free", description: "Core account features." },
-  pro: { name: "Pro", description: "More capacity and advanced features." },
-  business: { name: "Business", description: "Expanded features for teams and organizations." },
+  free: { name: "Free", description: "A practical starting point for every user.", features: ["5 GB of storage per user", "Limited access to the Family platform", "Limited account features"] },
+  pro: { name: "Pro", description: "More features for users who want to do more.", features: ["More account features", "Access to Sytacle AI", "Access to experimental features", "More storage and capacity"] },
+  business: { name: "Business", description: "Broader access for teams and organizations.", features: ["More access to all Sytacle features", "Expanded team and organization capabilities", "Priority access to new features", "Higher storage and capacity limits"] },
 };
 
 function money(amount, currency) { return new Intl.NumberFormat(undefined, { style: "currency", currency: currency || "USD" }).format(amount || 0); }
@@ -94,11 +94,21 @@ function ClaimSubscriptionsPage() {
       <div id="available-plans">
       <Card>
         <div className="border-b border-slate-100 px-5 py-5 dark:border-slate-800"><h3 className="font-semibold text-slate-900 dark:text-slate-100">Available plans</h3><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Compare the plans available for your account.</p></div>
-        {Object.entries(subscriptionPlans).map(([key, plan]) => <div key={key} className="flex items-center gap-3 border-b border-slate-100 px-5 py-4 last:border-0 dark:border-slate-800"><div className="min-w-0 flex-1"><p className="text-sm font-medium text-slate-900 dark:text-slate-100">{plan.name}</p><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{plan.description}</p></div>{key === planKey && <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">Current</span>}</div>)}
+        {Object.entries(subscriptionPlans).map(([key, plan]) => <Link key={key} to={`/account/payments/subscriptions/${key}`} className="flex items-center gap-3 border-b border-slate-100 px-5 py-4 last:border-0 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/60"><div className="min-w-0 flex-1"><p className="text-sm font-medium text-slate-900 dark:text-slate-100">{plan.name}</p><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{plan.description}</p></div>{key === planKey && <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">Current</span>}<ArrowRight size={17} className="shrink-0 text-slate-400" /></Link>)}
       </Card>
       </div>
       {subscriptions.length > 0 && <Card><div className="border-b border-slate-100 px-5 py-5 dark:border-slate-800"><h3 className="font-semibold text-slate-900 dark:text-slate-100">Billing subscriptions</h3></div>{subscriptions.map((item) => <div key={item.id} className="flex items-center gap-3 px-5 py-4"><div className="min-w-0 flex-1"><p className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.planName}</p><p className="text-xs text-slate-500 dark:text-slate-400">{money(item.amount, item.currency)} / {item.interval} · {item.status}</p></div><div className="flex shrink-0 flex-col items-end gap-2"><span className="text-xs text-slate-500 dark:text-slate-400">{item.cancelAtPeriodEnd ? "Ends" : "Renews"} {date(item.currentPeriodEnd)}</span>{!item.cancelAtPeriodEnd && item.status === "active" && <button type="button" onClick={() => cancel(item.id)} disabled={busy === item.id} className="text-xs font-medium text-rose-600 disabled:opacity-60 dark:text-rose-400">{busy === item.id ? "Cancelling..." : "Cancel"}</button>}</div></div>)}</Card>}
     </div>
+  </Page>;
+}
+
+function PlanDetailsPage({ planKey }) {
+  const plan = subscriptionPlans[planKey] || subscriptionPlans.free;
+  return <Page back icon={CreditCard} title={`${plan.name} plan`} subtitle="Plan details and included features.">
+    <Card>
+      <div className="border-b border-slate-100 px-5 py-5 dark:border-slate-800"><h3 className="font-semibold text-slate-900 dark:text-slate-100">{plan.name}</h3><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{plan.description}</p></div>
+      <ul className="divide-y divide-slate-100 dark:divide-slate-800">{plan.features.map((feature) => <li key={feature} className="px-5 py-4 text-sm text-slate-700 dark:text-slate-300">{feature}</li>)}</ul>
+    </Card>
   </Page>;
 }
 
@@ -123,4 +133,4 @@ function PaymentsHome() { return <Page icon={CreditCard} title="Payments" subtit
 
 function BillingEditor({ accountId }) { const { user } = useAuth(); const [account, setAccount] = useState(null); const [error, setError] = useState(""); useEffect(() => { import("../lib/accountApi.js").then(({ getBilling }) => getBilling(user)).then((result) => setAccount((result.accounts || []).find((item) => item.id === accountId) || null)).catch((err) => setError(friendlyAuthError(err))); }, [user, accountId]); if (error) return <Page back icon={WalletCards} title="Billing account" subtitle="Manage your saved billing details."><Message error={error} /></Page>; if (!account) return <Loading />; return <BillingForm user={user} account={account} onSaved={() => window.history.back()} />; }
 
-export default function PaymentsPage() { const { user } = useAuth(); const parts = useLocation().pathname.split("/"); const path = parts[3] || ""; if (path === "billing" && parts[4] === "new") return <BillingForm user={user} onSaved={() => window.history.back()} />; if (path === "billing" && parts[4]) return <BillingEditor accountId={parts[4]} />; if (path === "billing") return <BillingPage />; if (path === "payment-methods") return <PaymentMethodsPage />; if (path === "subscriptions") return <SubscriptionsPage />; if (path === "purchases") return <PurchasesPage />; return <PaymentsHome />; }
+export default function PaymentsPage() { const { user } = useAuth(); const parts = useLocation().pathname.split("/"); const path = parts[3] || ""; if (path === "billing" && parts[4] === "new") return <BillingForm user={user} onSaved={() => window.history.back()} />; if (path === "billing" && parts[4]) return <BillingEditor accountId={parts[4]} />; if (path === "billing") return <BillingPage />; if (path === "payment-methods") return <PaymentMethodsPage />; if (path === "subscriptions" && parts[4]) return <PlanDetailsPage planKey={parts[4]} />; if (path === "subscriptions") return <ClaimSubscriptionsPage />; if (path === "purchases") return <PurchasesPage />; return <PaymentsHome />; }
