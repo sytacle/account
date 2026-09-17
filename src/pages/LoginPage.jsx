@@ -66,8 +66,8 @@ export default function LoginPage() {
   } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const returnTo =
-    new URLSearchParams(location.search).get("returnTo") || "/account/";
+  const returnTo = getSafeReturnTo(searchParams.get("returnTo"));
+  
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState("");
@@ -132,8 +132,6 @@ export default function LoginPage() {
         <Spinner label="Checking your session…" />
       </div>
     );
-
-  const returnTo = getSafeReturnTo(searchParams.get("returnTo"));
 
   if (isAuthenticated) return <Navigate to={returnTo} replace />;
 
