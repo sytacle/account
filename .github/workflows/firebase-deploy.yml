@@ -42,6 +42,8 @@ jobs:
           echo "VITE_FIREBASE_MEASUREMENT_ID=${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}" >> .env
           echo "VITE_OAUTH_API_URL=${{ secrets.VITE_OAUTH_API_URL }}" >> .env
           echo "VITE_ACCOUNT_API_URL=${{ secrets.VITE_ACCOUNT_API_URL }}" >> .env
+          echo "VITE_REST_COUNTRIES_URL=${{ secrets.VITE_REST_COUNTRIES_URL }}" >> .env
+          echo "VITE_REST_COUNTRIES_API_KEY=${{ secrets.VITE_REST_COUNTRIES_API_KEY }}" >> .env
 
       - name: Build project
         run: npm run build

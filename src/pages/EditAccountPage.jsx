@@ -7,6 +7,7 @@ import FormNotice from "../components/FormNotice";
 import Spinner from "../components/Spinner";
 import { useAuth } from "../context/AuthContext";
 import { friendlyAuthError } from "../lib/authErrors";
+import { fallbackCountries, getCountries } from "../lib/countries";
 
 const fields = [
   ["displayName", "Full name", "text"],
@@ -16,14 +17,6 @@ const fields = [
   ["zoneinfo", "Time zone", "text"],
 ];
 
-const fallbackCountries = [
-  ["US", "United States"],
-  ["GB", "United Kingdom"],
-  ["CA", "Canada"],
-  ["AU", "Australia"],
-  ["PH", "Philippines"],
-  ["JP", "Japan"],
-];
 const fallbackLocales = ["en-US", "en-GB", "fil-PH", "ja-JP", "fr-FR", "de-DE"];
 const fallbackTimezones = ["UTC", "America/Los_Angeles", "America/New_York", "Europe/London", "Europe/Paris", "Asia/Manila", "Asia/Tokyo", "Australia/Sydney"];
 const timezones = typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : fallbackTimezones;
@@ -49,10 +42,7 @@ export default function EditAccountPage() {
   useEffect(() => {
     let active = true;
     Promise.all([
-      fetch("https://restcountries.com/v3.1/all?fields=cca2,name").then((response) => {
-        if (!response.ok) throw new Error("Countries unavailable");
-        return response.json();
-      }),
+      getCountries(),
       fetch("https://raw.githubusercontent.com/umpirsky/language-list/master/data/en/language.json").then((response) => {
         if (!response.ok) throw new Error("Locales unavailable");
         return response.json();
@@ -61,10 +51,7 @@ export default function EditAccountPage() {
       .then(([countryData, localeData]) => {
         if (!active) return;
         setCountries(
-          countryData
-            .filter((country) => country.cca2 && country.name?.common)
-            .map((country) => [country.cca2, country.name.common])
-            .sort((a, b) => a[1].localeCompare(b[1])),
+          countryData,
         );
         setLocales(Object.entries(localeData).map(([code]) => code).sort());
       })

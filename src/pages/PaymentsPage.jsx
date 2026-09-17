@@ -6,8 +6,8 @@ import CustomSelect from "../components/CustomSelect";
 import FormNotice from "../components/FormNotice";
 import { useAuth } from "../context/AuthContext";
 import { friendlyAuthError } from "../lib/authErrors";
+import { fallbackCountries, getCountries } from "../lib/countries";
 
-const fallbackCountries = [["US", "United States"], ["GB", "United Kingdom"], ["CA", "Canada"], ["AU", "Australia"], ["PH", "Philippines"], ["JP", "Japan"]];
 const billingFields = [["name", "Name"], ["email", "Billing email"], ["addressLine1", "Address"], ["city", "City"], ["state", "State / region"], ["postalCode", "Postal code"]];
 const subscriptionPlans = {
   free: { name: "Free", description: "Core account features." },
@@ -26,7 +26,7 @@ function BillingForm({ user, account, onSaved }) {
   const [form, setForm] = useState(account || { name: user?.displayName || "", email: user?.email || "" });
   const [countries, setCountries] = useState(fallbackCountries);
   const [busy, setBusy] = useState(false); const [error, setError] = useState("");
-  useEffect(() => { fetch("https://restcountries.com/v3.1/all?fields=cca2,name").then((response) => response.ok ? response.json() : Promise.reject()).then((data) => setCountries(data.filter((item) => item.cca2 && item.name?.common).map((item) => [item.cca2, item.name.common]).sort((a, b) => a[1].localeCompare(b[1])))).catch(() => {}); }, []);
+  useEffect(() => { getCountries().then(setCountries).catch(() => {}); }, []);
   async function save(event) { event.preventDefault(); setBusy(true); setError(""); try { const api = await import("../lib/accountApi.js"); const result = account ? await api.updateBillingAccount(user, account.id, form) : await api.createBilling(user, form); onSaved(result.account); } catch (err) { setError(friendlyAuthError(err)); } finally { setBusy(false); } }
   return <Page back icon={WalletCards} title={account ? "Manage billing account" : "Create billing account"} subtitle="Keep invoice and receipt details in a separate billing account."><Message error={error} /><Card><form onSubmit={save} className="grid gap-4 p-5 sm:grid-cols-2">{billingFields.map(([key, label]) => <label key={key} className={key === "addressLine1" ? "sm:col-span-2" : ""}><span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-300">{label}</span><input required={key === "name" || key === "email"} type={key === "email" ? "email" : "text"} value={form[key] || ""} onChange={(event) => setForm({ ...form, [key]: event.target.value })} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950" /></label>)}<label><span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-300">Country</span><CustomSelect value={form.country || ""} onChange={(value) => setForm({ ...form, country: value })} options={countries.map(([code, name]) => ({ value: code, label: name }))} placeholder="Select a country" /></label><div className="sm:col-span-2"><button type="submit" disabled={busy} className="rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">{busy ? "Saving..." : account ? "Save billing details" : "Create billing account"}</button></div></form></Card></Page>;
 }
