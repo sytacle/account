@@ -14,7 +14,7 @@ function allowedOrigin(origin) {
     if (import.meta.env.DEV && url.hostname === "localhost") return true;
     return (
       url.protocol === "https:" &&
-      (url.hostname === "www.sytacle.com" || url.hostname.endsWith(".sytacle.com"))
+      (url.hostname === "sytacle.com" || url.hostname.endsWith(".sytacle.com"))
     );
   } catch {
     return false;

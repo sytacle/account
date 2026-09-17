@@ -21,6 +21,19 @@
     ],
     "headers": [
       {
+        "source": "/sso/bridge",
+        "headers": [
+          {
+            "key": "Content-Security-Policy",
+            "value": "frame-ancestors https://*.sytacle.com http://localhost:5173 http://localhost:3000"
+          },
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
         "source": "**/*.@(jpg|jpeg|gif|png|svg|webp|avif)",
         "headers": [
           {

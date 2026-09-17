@@ -18,7 +18,7 @@ export const config = {
     origins: new Set(
       (
         process.env.SSO_ALLOWED_ORIGINS ||
-        "https://sytacle.com,https://my.sytacle.com,http://localhost:3000,http://localhost:5173"
+        "https://sytacle.com,https://my.sytacle.com,https://www.sytacle.com,http://localhost:3000,http://localhost:5173"
       )
         .split(",")
         .map((origin) => origin.trim())
