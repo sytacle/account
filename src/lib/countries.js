@@ -1,5 +1,7 @@
-const REST_COUNTRIES_URL = import.meta.env.VITE_REST_COUNTRIES_URL || "https://restcountries.com/v3.1/all?fields=name,cca2";
+const REST_COUNTRIES_BASE_URL =
+  import.meta.env.VITE_REST_COUNTRIES_URL || "https://api.restcountries.com/countries/v5";
 const REST_COUNTRIES_API_KEY = import.meta.env.VITE_REST_COUNTRIES_API_KEY;
+const PAGE_LIMIT = 100; // max page size on the free plan (500 on paid)
 
 let countriesRequest;
 
@@ -12,21 +14,11 @@ export const fallbackCountries = [
   ["JP", "Japan"],
 ];
 
-function normalizeCountries(data) {
-  const source = Array.isArray(data)
-    ? data
-    : Array.isArray(data?.data?.objects)
-      ? data.data.objects
-      : Array.isArray(data?.results)
-        ? data.results
-        : Array.isArray(data?.data)
-          ? data.data
-          : [];
-
-  return source
+function normalizeCountries(objects) {
+  return objects
     .map((country) => {
-      const code = country?.cca2 || country?.codes?.alpha_2 || country?.alpha2 || country?.code;
-      const name = country?.name?.common || country?.names?.common || country?.name || country?.label;
+      const code = country?.codes?.alpha_2;
+      const name = country?.names?.common;
       if (!code || !name) return null;
       return [String(code), String(name)];
     })
@@ -34,17 +26,58 @@ function normalizeCountries(data) {
     .sort((a, b) => a[1].localeCompare(b[1]));
 }
 
+async function fetchAllCountries() {
+  if (!REST_COUNTRIES_API_KEY) {
+    // v5 requires a key on every request (Bearer header, or ?api-key= as a fallback).
+    throw new Error(
+      "Missing VITE_REST_COUNTRIES_API_KEY: the REST Countries v5 API requires an API key."
+    );
+  }
+
+  const objects = [];
+  let offset = 0;
+
+  while (true) {
+    const url = new URL(REST_COUNTRIES_BASE_URL);
+    url.searchParams.set("limit", String(PAGE_LIMIT));
+    url.searchParams.set("offset", String(offset));
+    // Trim the payload to just what the UI needs.
+    url.searchParams.set("response_fields", "names.common,codes.alpha_2");
+
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${REST_COUNTRIES_API_KEY}` },
+    });
+
+    if (!response.ok) {
+      let message = `Countries request failed (${response.status})`;
+      try {
+        const body = await response.json();
+        if (body?.errors?.[0]?.message) message = body.errors[0].message;
+      } catch {
+        // ignore parse failure, use the generic message
+      }
+      throw new Error(message);
+    }
+
+    const body = await response.json();
+    const page = body?.data?.objects;
+    if (!Array.isArray(page)) throw new Error("Invalid countries response");
+
+    objects.push(...page);
+
+    const meta = body?.data?.meta;
+    if (!meta?.more) break;
+    offset += meta.count ?? PAGE_LIMIT;
+  }
+
+  return objects;
+}
+
 export function getCountries() {
   if (!countriesRequest) {
-    countriesRequest = fetch(REST_COUNTRIES_URL, {
-      headers: REST_COUNTRIES_API_KEY ? { Authorization: `Bearer ${REST_COUNTRIES_API_KEY}` } : {},
-    })
-      .then((response) => {
-        if (!response.ok) throw new Error("Countries unavailable");
-        return response.json();
-      })
-      .then((data) => {
-        const countries = normalizeCountries(data);
+    countriesRequest = fetchAllCountries()
+      .then((objects) => {
+        const countries = normalizeCountries(objects);
         if (!countries.length) throw new Error("Invalid countries response");
         return countries;
       })

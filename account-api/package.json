@@ -4,7 +4,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vercel dev",
     "lint": "eslint .",
     "deploy": "vercel --prod"
   },
@@ -21,7 +20,7 @@
   "devDependencies": {
     "@eslint/js": "^9.35.0",
     "eslint": "^9.35.0",
-    "vercel": "^48.2.0"
+    "vercel": "^59.20.0"
   },
   "engines": {
     "node": ">=22.12.0"

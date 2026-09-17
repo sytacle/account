@@ -17,9 +17,34 @@ const fields = [
   ["zoneinfo", "Time zone", "text"],
 ];
 
-const fallbackLocales = ["en-US", "en-GB", "fil-PH", "ja-JP", "fr-FR", "de-DE"];
-const fallbackTimezones = ["UTC", "America/Los_Angeles", "America/New_York", "Europe/London", "Europe/Paris", "Asia/Manila", "Asia/Tokyo", "Australia/Sydney"];
-const timezones = typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : fallbackTimezones;
+const fallbackLocales = [
+  ["en-US", "American English"],
+  ["en-GB", "British English"],
+  ["fil-PH", "Filipino"],
+  ["ja-JP", "Japanese"],
+  ["fr-FR", "French"],
+  ["de-DE", "German"],
+];
+
+function parseLocales(data) {
+  return Object.entries(data)
+    .map(([code, label]) => [code.replace(/_/g, "-"), label])
+    .sort((a, b) => a[1].localeCompare(b[1]));
+}
+const fallbackTimezones = [
+  "UTC",
+  "America/Los_Angeles",
+  "America/New_York",
+  "Europe/London",
+  "Europe/Paris",
+  "Asia/Manila",
+  "Asia/Tokyo",
+  "Australia/Sydney",
+];
+const timezones =
+  typeof Intl.supportedValuesOf === "function"
+    ? Intl.supportedValuesOf("timeZone")
+    : fallbackTimezones;
 
 export default function EditAccountPage() {
   const { user, profile, saveProfile } = useAuth();
@@ -43,23 +68,23 @@ export default function EditAccountPage() {
     let active = true;
     Promise.all([
       getCountries(),
-      fetch("https://raw.githubusercontent.com/umpirsky/language-list/master/data/en/language.json").then((response) => {
+      fetch(
+        "https://raw.githubusercontent.com/umpirsky/language-list/master/data/en/language.json",
+      ).then((response) => {
         if (!response.ok) throw new Error("Locales unavailable");
         return response.json();
       }),
     ])
       .then(([countryData, localeData]) => {
         if (!active) return;
-        setCountries(
-          countryData,
-        );
-        setLocales(Object.entries(localeData).map(([code]) => code).sort());
+        setCountries(countryData);
+        setLocales(parseLocales(localeData));
       })
       .catch(() => {
         // Keep the small built-in lists when the public catalog APIs are unavailable.
       });
     return () => {
-      active = false;
+      active = true;
     };
   }, []);
 
@@ -109,23 +134,75 @@ export default function EditAccountPage() {
                 <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-300">
                   {label}
                 </span>
-                {key === "zoneinfo" ? <CustomSelect value={form[key]} onChange={(value) => setForm({ ...form, [key]: value })} options={timezones.map((zone) => ({ value: zone, label: zone }))} placeholder="Select a time zone" /> : <input type={type} value={form[key]} onChange={(event) => setForm({ ...form, [key]: event.target.value })} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3.5 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />}
+                {key === "zoneinfo" ? (
+                  <CustomSelect
+                    value={form[key]}
+                    onChange={(value) => setForm({ ...form, [key]: value })}
+                    options={timezones.map((zone) => ({
+                      value: zone,
+                      label: zone,
+                    }))}
+                    placeholder="Select a time zone"
+                  />
+                ) : (
+                  <input
+                    type={type}
+                    value={form[key]}
+                    onChange={(event) =>
+                      setForm({ ...form, [key]: event.target.value })
+                    }
+                    className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3.5 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                  />
+                )}
               </label>
             ))}
             <label>
-              <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-300">Gender</span>
-              <CustomSelect value={form.gender} onChange={(value) => setForm({ ...form, gender: value })} options={[{ value: "", label: "Prefer not to say" }, { value: "female", label: "Female" }, { value: "male", label: "Male" }, { value: "nonbinary", label: "Non-binary" }, { value: "other", label: "Other" }]} placeholder="Prefer not to say" />
+              <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-300">
+                Gender
+              </span>
+              <CustomSelect
+                value={form.gender}
+                onChange={(value) => setForm({ ...form, gender: value })}
+                options={[
+                  { value: "", label: "Prefer not to say" },
+                  { value: "female", label: "Female" },
+                  { value: "male", label: "Male" },
+                  { value: "nonbinary", label: "Non-binary" },
+                  { value: "other", label: "Other" },
+                ]}
+                placeholder="Prefer not to say"
+              />
             </label>
             <label>
-              <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-300">Country</span>
-              <CustomSelect value={form.country} onChange={(value) => setForm({ ...form, country: value })} options={countries.map(([code, name]) => ({ value: code, label: name }))} placeholder="Select a country" />
+              <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-300">
+                Country
+              </span>
+              <CustomSelect
+                value={form.country}
+                onChange={(value) => setForm({ ...form, country: value })}
+                options={countries.map(([code, name]) => ({
+                  value: code,
+                  label: name,
+                }))}
+                placeholder="Select a country"
+              />
             </label>
             <label>
-              <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-300">Language / locale</span>
-              <CustomSelect value={form.locale} onChange={(value) => setForm({ ...form, locale: value })} options={locales.map((locale) => ({ value: locale, label: locale }))} placeholder="Select a locale" />
+              <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-300">
+                Language / locale
+              </span>
+              <CustomSelect
+                value={form.locale}
+                onChange={(value) => setForm({ ...form, locale: value })}
+                options={locales.map(([code, label]) => ({
+                  value: code,
+                  label,
+                }))}
+                placeholder="Select a locale"
+              />
             </label>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center">
             <button
               type="submit"
               disabled={saving}
@@ -133,9 +210,6 @@ export default function EditAccountPage() {
             >
               {saving ? <Spinner size={16} /> : "Save changes"}
             </button>
-            <span className="text-xs text-slate-500 dark:text-slate-400">
-              Passkey verification is required.
-            </span>
           </div>
         </form>
       </Card>

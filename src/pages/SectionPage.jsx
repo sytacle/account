@@ -263,6 +263,7 @@ function MfaCard() {
       setBusy(false);
     }
   }
+  
   async function verify(e) {
     e.preventDefault();
     setBusy(true);

@@ -24,8 +24,14 @@ function billingAccounts(uid) {
   return billingRef(uid).collection("accounts");
 }
 
+// Pre-migration billing profiles were stored as flat documents directly in the
+// "billing" collection (one doc per account), before the current account/accounts
+// subcollection model existed. "account" and "settings" are reserved doc IDs used
+// by the current schema and are excluded when reading this collection as legacy data.
+const RESERVED_BILLING_DOC_IDS = new Set(["account", "settings"]);
+
 function legacyBillingAccounts(uid) {
-  return db.collection("users").doc(uid).collection("billing").collection("accounts");
+  return db.collection("users").doc(uid).collection("billing");
 }
 
 function activeBillingRef(uid) {
@@ -33,7 +39,12 @@ function activeBillingRef(uid) {
 }
 
 function userCollection(uid, name) {
-  return db.collection("users").doc(uid).collection("billing").doc("account").collection(name);
+  return db
+    .collection("users")
+    .doc(uid)
+    .collection("billing")
+    .doc("account")
+    .collection(name);
 }
 
 function dateValue(value) {
@@ -111,17 +122,28 @@ function billingInput(token, body) {
   for (const field of billingFields) {
     if (body[field] === undefined) continue;
     if (typeof body[field] !== "string" || body[field].length > 256)
-      throw new ApiError("invalid_request", `Invalid billing field: ${field}.`, 400);
+      throw new ApiError(
+        "invalid_request",
+        `Invalid billing field: ${field}.`,
+        400,
+      );
     account[field] = body[field].trim();
   }
   if (!account.name || !account.email)
-    throw new ApiError("invalid_request", "Name and billing email are required.", 400);
+    throw new ApiError(
+      "invalid_request",
+      "Name and billing email are required.",
+      400,
+    );
   return account;
 }
 
 async function activeAccountId(uid, accounts) {
   const settings = await activeBillingRef(uid).get();
-  if (settings.exists && accounts.some((account) => account.id === settings.data().activeAccountId))
+  if (
+    settings.exists &&
+    accounts.some((account) => account.id === settings.data().activeAccountId)
+  )
     return settings.data().activeAccountId;
   return accounts[0]?.id || null;
 }
@@ -133,14 +155,20 @@ export async function getBilling(req, res) {
     legacyBillingAccounts(token.uid).get(),
   ]);
 
+  const legacyDocs = legacyAccountsSnapshot.docs.filter(
+    (doc) => doc?.id && !RESERVED_BILLING_DOC_IDS.has(doc.id),
+  );
+
   const accountsById = new Map();
-  for (const account of [...accountsSnapshot.docs, ...legacyAccountsSnapshot.docs]) {
-    if (account?.id && !accountsById.has(account.id)) accountsById.set(account.id, account);
+  for (const account of [...accountsSnapshot.docs, ...legacyDocs]) {
+    if (account?.id && !accountsById.has(account.id))
+      accountsById.set(account.id, account);
   }
 
   const accounts = [];
   const legacy = await billingRef(token.uid).get();
-  if (legacy?.exists && !accountsById.has(legacy.id)) accountsById.set(legacy.id, legacy);
+  if (legacy?.exists && !accountsById.has(legacy.id))
+    accountsById.set(legacy.id, legacy);
   for (const account of accountsById.values()) {
     if (account && account.id) accounts.push(account);
   }
@@ -178,23 +206,38 @@ export async function createBilling(req, res) {
   });
   const existing = await billingAccounts(token.uid).get();
   if (existing.size === 1)
-    await activeBillingRef(token.uid).set({ activeAccountId: ref.id }, { merge: true });
-  return send(res, 201, { account: serializeBillingAccount(await ref.get(), ref.id) });
+    await activeBillingRef(token.uid).set(
+      { activeAccountId: ref.id },
+      { merge: true },
+    );
+  return send(res, 201, {
+    account: serializeBillingAccount(await ref.get(), ref.id),
+  });
 }
 
 export async function updateBilling(req, res) {
   const token = await requirePasskeyVerification(req);
-  const activeId = (await activeBillingRef(token.uid).get()).data()?.activeAccountId;
-  if (activeId && activeId !== "account") return updateBillingAccountFields(req, res, token, activeId);
+  const activeId = (await activeBillingRef(token.uid).get()).data()
+    ?.activeAccountId;
+  if (activeId && activeId !== "account")
+    return updateBillingAccountFields(req, res, token, activeId);
   const update = {};
   for (const field of billingFields) {
     if (req.body?.[field] === undefined) continue;
     if (typeof req.body[field] !== "string" || req.body[field].length > 256)
-      throw new ApiError("invalid_request", `Invalid billing field: ${field}.`, 400);
+      throw new ApiError(
+        "invalid_request",
+        `Invalid billing field: ${field}.`,
+        400,
+      );
     update[field] = req.body[field].trim();
   }
   if (!Object.keys(update).length)
-    throw new ApiError("invalid_request", "At least one billing field is required.", 400);
+    throw new ApiError(
+      "invalid_request",
+      "At least one billing field is required.",
+      400,
+    );
 
   await billingRef(token.uid).set(
     { ...update, updatedAt: FieldValue.serverTimestamp() },
@@ -209,30 +252,49 @@ export async function updateBillingAccount(req, res) {
 }
 
 async function updateBillingAccountFields(req, res, token, accountId) {
-  const ref = accountId === "account"
-    ? billingRef(token.uid)
-    : billingAccounts(token.uid).doc(String(accountId || ""));
+  const ref =
+    accountId === "account"
+      ? billingRef(token.uid)
+      : billingAccounts(token.uid).doc(String(accountId || ""));
   const snapshot = await ref.get();
-  if (!snapshot.exists) throw new ApiError("not_found", "Billing account not found.", 404);
+  if (!snapshot.exists)
+    throw new ApiError("not_found", "Billing account not found.", 404);
   const update = {};
   for (const field of billingFields) {
     if (req.body?.[field] === undefined) continue;
     if (typeof req.body[field] !== "string" || req.body[field].length > 256)
-      throw new ApiError("invalid_request", `Invalid billing field: ${field}.`, 400);
+      throw new ApiError(
+        "invalid_request",
+        `Invalid billing field: ${field}.`,
+        400,
+      );
     update[field] = req.body[field].trim();
   }
   if (!Object.keys(update).length)
-    throw new ApiError("invalid_request", "At least one billing field is required.", 400);
-  await ref.set({ ...update, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
-  return send(res, 200, { account: serializeBillingAccount(await ref.get(), accountId) });
+    throw new ApiError(
+      "invalid_request",
+      "At least one billing field is required.",
+      400,
+    );
+  await ref.set(
+    { ...update, updatedAt: FieldValue.serverTimestamp() },
+    { merge: true },
+  );
+  return send(res, 200, {
+    account: serializeBillingAccount(await ref.get(), accountId),
+  });
 }
 
 export async function activateBillingAccount(req, res) {
   const token = await requirePasskeyVerification(req);
   const accountId = String(req.params.accountId || "");
   const snapshot = await billingAccounts(token.uid).doc(accountId).get();
-  if (!snapshot.exists) throw new ApiError("not_found", "Billing account not found.", 404);
-  await activeBillingRef(token.uid).set({ activeAccountId: accountId, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  if (!snapshot.exists)
+    throw new ApiError("not_found", "Billing account not found.", 404);
+  await activeBillingRef(token.uid).set(
+    { activeAccountId: accountId, updatedAt: FieldValue.serverTimestamp() },
+    { merge: true },
+  );
   return send(res, 200, { activeAccountId: accountId });
 }
 
@@ -249,14 +311,32 @@ export async function listPaymentMethods(req, res) {
 export async function addPaymentMethod(req, res) {
   const token = await requirePasskeyVerification(req);
   const body = req.body || {};
-  if (typeof body.providerPaymentMethodId !== "string" || !body.providerPaymentMethodId.trim())
-    throw new ApiError("invalid_request", "A provider payment-method token is required.", 400);
-  if (["number", "cvc", "cardNumber", "pan"].some((field) => body[field] !== undefined))
-    throw new ApiError("invalid_request", "Raw card details must be sent directly to the payment provider.", 400);
+  if (
+    typeof body.providerPaymentMethodId !== "string" ||
+    !body.providerPaymentMethodId.trim()
+  )
+    throw new ApiError(
+      "invalid_request",
+      "A provider payment-method token is required.",
+      400,
+    );
+  if (
+    ["number", "cvc", "cardNumber", "pan"].some(
+      (field) => body[field] !== undefined,
+    )
+  )
+    throw new ApiError(
+      "invalid_request",
+      "Raw card details must be sent directly to the payment provider.",
+      400,
+    );
 
   const ref = userCollection(token.uid, "paymentMethods").doc();
   await ref.set({
-    provider: typeof body.provider === "string" ? body.provider.slice(0, 32) : "external",
+    provider:
+      typeof body.provider === "string"
+        ? body.provider.slice(0, 32)
+        : "external",
     providerPaymentMethodId: body.providerPaymentMethodId.trim().slice(0, 256),
     type: typeof body.type === "string" ? body.type.slice(0, 32) : "card",
     brand: typeof body.brand === "string" ? body.brand.slice(0, 32) : null,
@@ -266,12 +346,16 @@ export async function addPaymentMethod(req, res) {
     isDefault: body.isDefault === true,
     createdAt: FieldValue.serverTimestamp(),
   });
-  return send(res, 201, { paymentMethod: serializePaymentMethod(await ref.get()) });
+  return send(res, 201, {
+    paymentMethod: serializePaymentMethod(await ref.get()),
+  });
 }
 
 export async function removePaymentMethod(req, res) {
   const token = await requirePasskeyVerification(req);
-  const ref = userCollection(token.uid, "paymentMethods").doc(String(req.params.paymentMethodId || ""));
+  const ref = userCollection(token.uid, "paymentMethods").doc(
+    String(req.params.paymentMethodId || ""),
+  );
   const snapshot = await ref.get();
   if (!snapshot.exists || snapshot.data().deletedAt != null)
     throw new ApiError("not_found", "Payment method not found.", 404);
@@ -284,7 +368,11 @@ export async function listPurchases(req, res) {
   const snapshot = await userCollection(token.uid, "purchases").get();
   return send(res, 200, {
     purchases: snapshot.docs
-      .sort((a, b) => (b.data().purchasedAt?.toMillis?.() || 0) - (a.data().purchasedAt?.toMillis?.() || 0))
+      .sort(
+        (a, b) =>
+          (b.data().purchasedAt?.toMillis?.() || 0) -
+          (a.data().purchasedAt?.toMillis?.() || 0),
+      )
       .map(serializePurchase),
   });
 }
@@ -299,7 +387,9 @@ export async function listSubscriptions(req, res) {
 
 export async function cancelSubscription(req, res) {
   const token = await requirePasskeyVerification(req);
-  const ref = userCollection(token.uid, "subscriptions").doc(String(req.params.subscriptionId || ""));
+  const ref = userCollection(token.uid, "subscriptions").doc(
+    String(req.params.subscriptionId || ""),
+  );
   const snapshot = await ref.get();
   if (!snapshot.exists)
     throw new ApiError("not_found", "Subscription not found.", 404);
