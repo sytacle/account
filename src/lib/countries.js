@@ -1,4 +1,4 @@
-const REST_COUNTRIES_URL = import.meta.env.VITE_REST_COUNTRIES_URL || "https://api.restcountries.com/countries/v5?response_fields=names.common,codes.alpha_2&limit=300";
+const REST_COUNTRIES_URL = import.meta.env.VITE_REST_COUNTRIES_URL || "https://restcountries.com/v3.1/all?fields=name,cca2";
 const REST_COUNTRIES_API_KEY = import.meta.env.VITE_REST_COUNTRIES_API_KEY;
 
 let countriesRequest;
@@ -12,6 +12,28 @@ export const fallbackCountries = [
   ["JP", "Japan"],
 ];
 
+function normalizeCountries(data) {
+  const source = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.data?.objects)
+      ? data.data.objects
+      : Array.isArray(data?.results)
+        ? data.results
+        : Array.isArray(data?.data)
+          ? data.data
+          : [];
+
+  return source
+    .map((country) => {
+      const code = country?.cca2 || country?.codes?.alpha_2 || country?.alpha2 || country?.code;
+      const name = country?.name?.common || country?.names?.common || country?.name || country?.label;
+      if (!code || !name) return null;
+      return [String(code), String(name)];
+    })
+    .filter(Boolean)
+    .sort((a, b) => a[1].localeCompare(b[1]));
+}
+
 export function getCountries() {
   if (!countriesRequest) {
     countriesRequest = fetch(REST_COUNTRIES_URL, {
@@ -22,11 +44,9 @@ export function getCountries() {
         return response.json();
       })
       .then((data) => {
-        if (!Array.isArray(data?.data?.objects)) throw new Error("Invalid countries response");
-        return data.data.objects
-          .filter((country) => country.codes?.alpha_2 && country.names?.common)
-          .map((country) => [country.codes.alpha_2, country.names.common])
-          .sort((a, b) => a[1].localeCompare(b[1]));
+        const countries = normalizeCountries(data);
+        if (!countries.length) throw new Error("Invalid countries response");
+        return countries;
       })
       .catch((error) => {
         countriesRequest = undefined;

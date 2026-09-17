@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bell, Cloud, Download, HelpCircle, LockKeyhole, Trash2, Upload } from "lucide-react";
+import { Bell, Cloud, Download, ExternalLink, HelpCircle, LockKeyhole, Trash2 } from "lucide-react";
 import { Card, Row } from "../components/Card";
 import FormNotice from "../components/FormNotice";
 import { useAuth } from "../context/AuthContext";
@@ -169,21 +169,6 @@ function StorageSection() {
 
   useEffect(() => { load(); }, [user]);
 
-  async function upload(event) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    setBusy("upload"); setError("");
-    try {
-      const { createStorageUpload, completeStorageUpload } = await import("../lib/accountApi.js");
-      const uploadData = await createStorageUpload(user, file);
-      const response = await fetch(uploadData.uploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
-      if (!response.ok) throw new Error("The file upload failed.");
-      await completeStorageUpload(user, { fileId: uploadData.fileId, key: uploadData.key, name: file.name, contentType: file.type, size: file.size });
-      await load();
-    } catch (err) { setError(err.message || "Unable to upload file."); } finally { setBusy(""); }
-  }
-
   async function remove(file) {
     if (!window.confirm(`Delete ${file.name}?`)) return;
     setBusy(file.id); setError("");
@@ -204,7 +189,7 @@ function StorageSection() {
 
   return <div className="max-w-3xl">
     <SectionHeader icon={Cloud} title="Data & storage" subtitle="Manage your files, profile photos, and storage usage." />
-    <Card className="mb-5 p-5"><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs text-slate-500 dark:text-slate-400">Account storage</p><p className="mt-1 text-2xl font-semibold text-slate-900 dark:text-slate-100">{formatBytes(totalBytes)}</p><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{totalFiles} {totalFiles === 1 ? "file" : "files"}</p></div><label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 has-[:disabled]:opacity-60"><Upload size={16} />{busy === "upload" ? "Uploading..." : "Upload file"}<input type="file" className="sr-only" onChange={upload} disabled={Boolean(busy)} /></label></div></Card>
+    <Card className="mb-5 p-5"><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs text-slate-500 dark:text-slate-400">Account storage</p><p className="mt-1 text-2xl font-semibold text-slate-900 dark:text-slate-100">{formatBytes(totalBytes)}</p><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{totalFiles} {totalFiles === 1 ? "file" : "files"}</p></div><a href="https://cloud.sytacle.com" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"><ExternalLink size={16} />Open Cloud</a></div></Card>
     {error && <FormNotice>{error}</FormNotice>}
     <Card className="divide-y divide-slate-100 overflow-hidden dark:divide-slate-800">{files.length ? files.map((file) => <div key={file.id} className="flex items-center gap-3 px-5 py-4"><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{file.name}</p><p className="text-xs text-slate-500 dark:text-slate-400">{formatBytes(file.size)} · {file.provider}</p></div><button type="button" title="Download file" onClick={() => download(file)} className="text-slate-500 hover:text-blue-600"><Download size={17} /></button><button type="button" title="Delete file" onClick={() => remove(file)} disabled={Boolean(busy)} className="text-slate-500 hover:text-rose-600 disabled:opacity-50"><Trash2 size={17} /></button></div>) : <p className="px-5 py-6 text-sm text-slate-500 dark:text-slate-400">No files uploaded yet.</p>}</Card>
   </div>;

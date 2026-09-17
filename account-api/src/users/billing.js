@@ -85,10 +85,14 @@ function serializeSubscription(doc) {
   };
 }
 
+function docData(doc) {
+  return doc && typeof doc.data === "function" ? doc.data() : {};
+}
+
 function serializeBillingAccount(doc, activeAccountId) {
-  const account = doc.data();
+  const account = docData(doc);
   return {
-    id: doc.id,
+    id: doc?.id || "",
     name: account.name || "",
     email: account.email || "",
     addressLine1: account.addressLine1 || "",
@@ -98,7 +102,7 @@ function serializeBillingAccount(doc, activeAccountId) {
     postalCode: account.postalCode || "",
     country: account.country || "",
     taxId: account.taxId || "",
-    isActive: doc.id === activeAccountId,
+    isActive: doc?.id === activeAccountId,
   };
 }
 
@@ -128,15 +132,23 @@ export async function getBilling(req, res) {
     billingAccounts(token.uid).get(),
     legacyBillingAccounts(token.uid).get(),
   ]);
-  const accountsById = new Map(accountsSnapshot.docs.map((account) => [account.id, account]));
-  for (const account of legacyAccountsSnapshot.docs) {
-    if (!accountsById.has(account.id)) accountsById.set(account.id, account);
+
+  const accountsById = new Map();
+  for (const account of [...accountsSnapshot.docs, ...legacyAccountsSnapshot.docs]) {
+    if (account?.id && !accountsById.has(account.id)) accountsById.set(account.id, account);
   }
-  let accounts = [...accountsById.values()];
+
+  const accounts = [];
   const legacy = await billingRef(token.uid).get();
-  if (legacy.exists) accounts = [legacy, ...accounts];
+  if (legacy?.exists && !accountsById.has(legacy.id)) accountsById.set(legacy.id, legacy);
+  for (const account of accountsById.values()) {
+    if (account && account.id) accounts.push(account);
+  }
+
   const activeId = await activeAccountId(token.uid, accounts);
-  const account = accounts.find((item) => item.id === activeId)?.data() || {};
+  const activeAccount = accounts.find((item) => item?.id === activeId) || null;
+  const account = activeAccount ? docData(activeAccount) : {};
+
   return send(res, 200, {
     exists: accounts.length > 0,
     activeAccountId: activeId,
