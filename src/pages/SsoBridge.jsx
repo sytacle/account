@@ -72,7 +72,7 @@ export default function SsoBridge() {
           send({ status: "unavailable" });
           return;
         }
-        send({ customToken: data.custom_token });
+        send({ customToken: data.custom_token, status: "signed_in" });
       } catch(error) {
         send({ status: "unavailable", error });
       }

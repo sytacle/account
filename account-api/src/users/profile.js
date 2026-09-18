@@ -23,6 +23,7 @@ export async function updateProfile(req, res) {
       a[f] = req.body[f].trim();
   if (!Object.keys(a).length)
     return send(res, 400, { error: "invalid_request" });
+  
   await db
     .collection("users")
     .doc(d.uid)
