@@ -24,3 +24,32 @@ if (!getApps().length) {
 export const auth = getAuth();
 export const db = getFirestore();
 export { Timestamp, FieldValue };
+
+async function initializeUserDefaults() {
+  const defaultAdminUid = process.env.DEFAULT_ADMIN_UID;
+  const defaultAdminEmail = process.env.DEFAULT_ADMIN_EMAIL?.trim().toLowerCase();
+  let pageToken;
+  do {
+    const page = await auth.listUsers(1000, pageToken);
+    for (const user of page.users) {
+      const claims = user.customClaims || {};
+      const isDefaultAdmin = (defaultAdminUid && user.uid === defaultAdminUid)
+        || (defaultAdminEmail && user.email?.toLowerCase() === defaultAdminEmail);
+      const nextClaims = { ...claims };
+      let changed = false;
+      if (!["free", "pro", "business"].includes(nextClaims.subscription)) {
+        nextClaims.subscription = "free";
+        changed = true;
+      }
+      if (isDefaultAdmin && (nextClaims.admin !== true || nextClaims.role !== "admin")) {
+        nextClaims.admin = true;
+        nextClaims.role = "admin";
+        changed = true;
+      }
+      if (changed) await auth.setCustomUserClaims(user.uid, nextClaims);
+    }
+    pageToken = page.pageToken;
+  } while (pageToken);
+}
+
+initializeUserDefaults().catch((error) => console.error("Failed to initialize user defaults.", error));

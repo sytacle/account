@@ -158,11 +158,22 @@ function formatBytes(bytes) {
   return `${(bytes / 1024 ** index).toFixed(index ? 1 : 0)} ${units[index]}`;
 }
 
+const storageLimits = {
+  free: 250 * 1024 * 1024,
+  pro: 1024 * 1024 * 1024,
+  business: 5 * 1024 * 1024 * 1024,
+};
+
+function planLabel(plan) {
+  return plan.charAt(0).toUpperCase() + plan.slice(1);
+}
+
 function StorageSection() {
   const { user } = useAuth();
   const [files, setFiles] = useState([]);
   const [totalFiles, setTotalFiles] = useState(0);
   const [totalBytes, setTotalBytes] = useState(0);
+  const [plan, setPlan] = useState("free");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
   const STORAGE_CLOUD_URL = import.meta.env.VITE_CLOUD_URL;
@@ -170,10 +181,15 @@ function StorageSection() {
   async function load() {
     try {
       const { getStorage } = await import("../lib/accountApi.js");
-      const result = await getStorage(user);
+      const [result, tokenResult] = await Promise.all([
+        getStorage(user),
+        user.getIdTokenResult(true),
+      ]);
       setFiles(result.files || []);
       setTotalFiles(result.totalFiles || 0);
       setTotalBytes(result.totalBytes || 0);
+      const claimedPlan = tokenResult.claims?.subscription;
+      setPlan(storageLimits[claimedPlan] ? claimedPlan : "free");
     } catch (err) {
       setError(err.message || "Unable to load storage.");
     }
@@ -208,6 +224,9 @@ function StorageSection() {
     }
   }
 
+  const storageLimit = storageLimits[plan];
+  const usagePercent = Math.min(100, (totalBytes / storageLimit) * 100);
+
   return (
     <div className="max-w-3xl">
       <SectionHeader
@@ -222,11 +241,23 @@ function StorageSection() {
               Account storage
             </p>
             <p className="mt-1 text-2xl font-semibold text-slate-900 dark:text-slate-100">
-              {formatBytes(totalBytes)}
+              {formatBytes(totalBytes)} / {formatBytes(storageLimit)}
             </p>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              {totalFiles} {totalFiles === 1 ? "file" : "files"}
+              {planLabel(plan)} plan · {totalFiles} {totalFiles === 1 ? "file" : "files"}
             </p>
+            <div
+              className="mt-3 h-2 w-full max-w-sm overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
+              role="progressbar"
+              aria-label={`${formatBytes(totalBytes)} of ${formatBytes(storageLimit)} used`}
+              aria-valuemax={storageLimit}
+              aria-valuenow={Math.min(totalBytes, storageLimit)}
+            >
+              <div
+                className={`h-full rounded-full transition-all ${usagePercent >= 90 ? "bg-rose-500" : "bg-blue-600"}`}
+                style={{ width: `${usagePercent}%` }}
+              />
+            </div>
           </div>
           <a
             href={STORAGE_CLOUD_URL ?? "https://cloud.sytacle.com/files/home"}

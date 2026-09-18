@@ -9,6 +9,11 @@ import { verifyBearerToken } from "../auth/security.js";
 import { requirePasskeyVerification } from "./passkeys.js";
 
 const MAX_FILE_BYTES = 100 * 1024 * 1024;
+const STORAGE_LIMITS = {
+  free: 250 * 1024 * 1024,
+  pro: 1024 * 1024 * 1024,
+  business: 5 * 1024 * 1024 * 1024,
+};
 const allowedImageTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 function r2() {
@@ -40,6 +45,46 @@ async function adjustSummary(uid, fileDelta, byteDelta) {
       updatedAt: FieldValue.serverTimestamp(),
     }, { merge: true });
   });
+}
+
+function storageLimit(subscription) {
+  return STORAGE_LIMITS[subscription] || STORAGE_LIMITS.free;
+}
+
+async function assertUploadWithinLimit(uid, subscription, size) {
+  const summary = await summaryRef(uid).get();
+  const totalBytes = Number(summary.data()?.totalBytes || 0);
+  if (totalBytes + size > storageLimit(subscription))
+    throw new ApiError("storage_limit_reached", "Your plan storage limit has been reached.", 413);
+}
+
+async function completeFile(uid, id, file, key, subscription) {
+  const ref = filesRef(uid).doc(id);
+  await db.runTransaction(async (transaction) => {
+    const summary = await transaction.get(summaryRef(uid));
+    const existing = await transaction.get(ref);
+    if (existing.exists) throw new ApiError("invalid_request", "Upload has already been completed.", 409);
+    const data = summary.exists ? summary.data() : {};
+    const totalBytes = Number(data.totalBytes || 0);
+    if (totalBytes + file.size > storageLimit(subscription))
+      throw new ApiError("storage_limit_reached", "Your plan storage limit has been reached.", 413);
+    transaction.create(ref, {
+      name: file.name,
+      key,
+      provider: "r2",
+      contentType: file.contentType,
+      size: file.size,
+      publicUrl: process.env.R2_PUBLIC_URL ? `${process.env.R2_PUBLIC_URL.replace(/\/$/, "")}/${key}` : null,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    transaction.set(summaryRef(uid), {
+      totalFiles: Math.max(0, Number(data.totalFiles || 0) + 1),
+      totalBytes: totalBytes + file.size,
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+  });
+  return ref;
 }
 
 function serializeFile(doc) {
@@ -80,6 +125,7 @@ export async function listFiles(req, res) {
 export async function createUploadUrl(req, res) {
   const token = await requirePasskeyVerification(req);
   const file = validateFile(req.body);
+  await assertUploadWithinLimit(token.uid, token.subscription, file.size);
   const client = r2();
   const id = crypto.randomUUID();
   const key = `${token.uid}/${id}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
@@ -101,18 +147,7 @@ export async function completeUpload(req, res) {
   const object = await r2().send(new HeadObjectCommand({ Bucket: process.env.R2_BUCKET, Key: key }));
   if (Number(object.ContentLength || 0) !== file.size || object.ContentType !== file.contentType)
     throw new ApiError("invalid_request", "Uploaded file metadata does not match the object.", 400);
-  const ref = filesRef(token.uid).doc(id);
-  await ref.create({
-    name: file.name,
-    key,
-    provider: "r2",
-    contentType: file.contentType,
-    size: file.size,
-    publicUrl: process.env.R2_PUBLIC_URL ? `${process.env.R2_PUBLIC_URL.replace(/\/$/, "")}/${key}` : null,
-    createdAt: FieldValue.serverTimestamp(),
-    updatedAt: FieldValue.serverTimestamp(),
-  });
-  await adjustSummary(token.uid, 1, file.size);
+  const ref = await completeFile(token.uid, id, file, key, token.subscription);
   return send(res, 201, { file: serializeFile(await ref.get()) });
 }
 
@@ -162,8 +197,10 @@ export async function completeCloudinaryProfileImage(req, res) {
   const ref = filesRef(token.uid).doc("profile-image");
   const previous = await ref.get();
   const size = Number(req.body?.bytes || 0);
+  const previousSize = Number(previous.data()?.size || 0);
+  await assertUploadWithinLimit(token.uid, token.subscription, Math.max(0, size - previousSize));
   await ref.set({ name: "Profile image", key: publicId, provider: "cloudinary", contentType: "image", size: Number(req.body?.bytes || 0), publicUrl: url, updatedAt: FieldValue.serverTimestamp(), createdAt: FieldValue.serverTimestamp() }, { merge: true });
-  await adjustSummary(token.uid, previous.exists ? 0 : 1, size - Number(previous.data()?.size || 0));
+  await adjustSummary(token.uid, previous.exists ? 0 : 1, size - previousSize);
   return send(res, 200, { photoURL: url });
 }
 

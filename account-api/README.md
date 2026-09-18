@@ -69,6 +69,8 @@ Set these in Vercel Project Settings → Environment Variables:
 - `CRON_SECRET` (required by the daily subscription-expiration cron route)
 - `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, and
   optional `R2_PUBLIC_URL` for account file storage
+- `DEFAULT_ADMIN_UID` or `DEFAULT_ADMIN_EMAIL` (optional; assigns the admin
+  claim to that Firebase user when the API initializes)
 - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET`
   for profile images
 
@@ -85,6 +87,8 @@ Free for the next 30-day cycle.
 Configure R2 bucket CORS to allow `PUT` from each account-app origin and expose
 the R2 public URL only if public file URLs are desired. Files remain private by
 default; downloads use short-lived signed URLs.
+Storage limits are 250 MB for Free, 1 GB for Pro, and 5 GB for Business. Users
+without a recognized subscription claim default to Free during API startup.
 
 ## Deploy
 
