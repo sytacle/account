@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Bell,
   Cloud,
@@ -11,6 +11,8 @@ import {
 import { Card, Row } from "../components/Card";
 import FormNotice from "../components/FormNotice";
 import { useAuth } from "../context/AuthContext";
+
+import { getIdTokenResult } from "firebase/auth";
 
 function SectionHeader({ icon: Icon, title, subtitle }) {
   return (
@@ -158,11 +160,6 @@ function formatBytes(bytes) {
   return `${(bytes / 1024 ** index).toFixed(index ? 1 : 0)} ${units[index]}`;
 }
 
-const storageLimits = {
-  free: 250 * 1024 * 1024,
-  pro: 1024 * 1024 * 1024,
-  business: 5 * 1024 * 1024 * 1024,
-};
 
 function planLabel(plan) {
   return plan.charAt(0).toUpperCase() + plan.slice(1);
@@ -170,26 +167,32 @@ function planLabel(plan) {
 
 function StorageSection() {
   const { user } = useAuth();
-  const [files, setFiles] = useState([]);
   const [totalFiles, setTotalFiles] = useState(0);
   const [totalBytes, setTotalBytes] = useState(0);
   const [plan, setPlan] = useState("free");
+  const [storageLimit, setStorageLimit] = useState(0);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
+
   const STORAGE_CLOUD_URL = import.meta.env.VITE_CLOUD_URL;
 
   async function load() {
+    if (!user) return;
     try {
-      const { getStorage } = await import("../lib/accountApi.js");
+      const { getStorageSummary } = await import("../lib/accountApi.js");
       const [result, tokenResult] = await Promise.all([
-        getStorage(user),
+        getStorageSummary(user),
         user.getIdTokenResult(true),
       ]);
-      setFiles(result.files || []);
       setTotalFiles(result.totalFiles || 0);
       setTotalBytes(result.totalBytes || 0);
-      const claimedPlan = tokenResult.claims?.subscription;
-      setPlan(storageLimits[claimedPlan] ? claimedPlan : "free");
+
+      const claims = tokenResult.claims || {};
+      const claimedPlan = claims.subscription || "free";
+      const limit = claims.plans?.features?.storage?.limit;
+
+      setPlan(claimedPlan);
+      setStorageLimit(typeof limit === "number" ? limit : 0);
     } catch (err) {
       setError(err.message || "Unable to load storage.");
     }
@@ -224,8 +227,9 @@ function StorageSection() {
     }
   }
 
-  const storageLimit = storageLimits[plan];
-  const usagePercent = Math.min(100, (totalBytes / storageLimit) * 100);
+  const usagePercent = storageLimit
+    ? Math.min(100, (totalBytes / storageLimit) * 100)
+    : 0;
 
   return (
     <div className="max-w-3xl">
@@ -235,23 +239,25 @@ function StorageSection() {
         subtitle="Manage your files, profile photos, and storage usage."
       />
       <Card className="mb-5 p-5">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Account storage
+        </p>
+        <p className="mt-1 text-2xl font-semibold text-slate-900 dark:text-slate-100">
+          {formatBytes(totalBytes)}
+          {storageLimit ? ` / ${formatBytes(storageLimit)}` : ""}
+        </p>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Account storage
-            </p>
-            <p className="mt-1 text-2xl font-semibold text-slate-900 dark:text-slate-100">
-              {formatBytes(totalBytes)} / {formatBytes(storageLimit)}
-            </p>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              {planLabel(plan)} plan · {totalFiles} {totalFiles === 1 ? "file" : "files"}
+              {planLabel(plan)} plan · {totalFiles}{" "}
+              {totalFiles === 1 ? "file" : "files"}
             </p>
             <div
               className="mt-3 h-2 w-full max-w-sm overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
               role="progressbar"
-              aria-label={`${formatBytes(totalBytes)} of ${formatBytes(storageLimit)} used`}
-              aria-valuemax={storageLimit}
-              aria-valuenow={Math.min(totalBytes, storageLimit)}
+              aria-label={`${formatBytes(totalBytes)} of ${storageLimit ? formatBytes(storageLimit) : "unknown"} used`}
+              aria-valuemax={storageLimit || undefined}
+              aria-valuenow={storageLimit ? Math.min(totalBytes, storageLimit) : undefined}
             >
               <div
                 className={`h-full rounded-full transition-all ${usagePercent >= 90 ? "bg-rose-500" : "bg-blue-600"}`}
@@ -266,48 +272,11 @@ function StorageSection() {
             className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
           >
             <ExternalLink size={16} />
-            Open Cloud
+            Manage files
           </a>
         </div>
       </Card>
       {error && <FormNotice>{error}</FormNotice>}
-      <Card className="divide-y divide-slate-100 overflow-hidden dark:divide-slate-800">
-        {files.length ? (
-          files.map((file) => (
-            <div key={file.id} className="flex items-center gap-3 px-5 py-4">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-                  {file.name}
-                </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {formatBytes(file.size)} · {file.contentType.toUpperCase()}
-                </p>
-              </div>
-              <button
-                type="button"
-                title="Download file"
-                onClick={() => download(file)}
-                className="text-slate-500 hover:text-blue-600"
-              >
-                <Download size={17} />
-              </button>
-              <button
-                type="button"
-                title="Delete file"
-                onClick={() => remove(file)}
-                disabled={Boolean(busy)}
-                className="text-slate-500 hover:text-rose-600 disabled:opacity-50"
-              >
-                <Trash2 size={17} />
-              </button>
-            </div>
-          ))
-        ) : (
-          <p className="px-5 py-6 text-sm text-slate-500 dark:text-slate-400">
-            No files uploaded yet.
-          </p>
-        )}
-      </Card>
     </div>
   );
 }

@@ -1,8 +1,9 @@
 import { auth, db, FieldValue, Timestamp } from "../firebase.js";
 import { send } from "../lib/http.js";
+import { config } from "../config.js"
 
 const PLAN_PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
-const plans = new Set(["free", "pro", "business"]);
+const plans = new Set(config.plans);
 
 function asDate(value) {
   if (!value) return null;
@@ -57,17 +58,21 @@ async function syncUser(user, now) {
   const nextClaims = {
     ...claims,
     subscription: plan,
+    plans: config.subscription.plans[plan],
     subscriptionStartedAt: startedAt.toISOString(),
     subscriptionExpiresAt: expiresAt.toISOString(),
   };
+  
   await auth.setCustomUserClaims(user.uid, nextClaims);
   await userRef.set({
     accountCreatedAt: Timestamp.fromDate(createdAt),
     subscription: plan,
+    plans: config.subscription.plans[plan],
     subscriptionStartedAt: Timestamp.fromDate(startedAt),
     subscriptionExpiresAt: Timestamp.fromDate(expiresAt),
     subscriptionLastCheckedAt: FieldValue.serverTimestamp(),
   }, { merge: true });
+  
   return { uid: user.uid, plan, expiresAt: expiresAt.toISOString() };
 }
 
@@ -79,6 +84,7 @@ export async function syncSubscriptionExpirations(req, res) {
   const now = new Date();
   const updated = [];
   let pageToken;
+  
   do {
     const page = await auth.listUsers(1000, pageToken);
     for (const user of page.users) updated.push(await syncUser(user, now));

@@ -212,6 +212,7 @@ export const getListPasskeys = (user) =>
   request(user, "/v3/users/me/passkeys", { method: "GET" });
 
 export const getStorage = (user) => request(user, "/v3/users/me/storage");
+export const getStorageSummary = (user) => request(user, "/v3/users/me/storage/summary");
 
 export const createStorageUpload = (user, file) =>
   requestWithPasskey(user, "/v3/users/me/storage/upload-url", {

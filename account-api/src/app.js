@@ -52,6 +52,7 @@ import {
   deleteFile,
   downloadFile,
   listFiles,
+  storageSummary,
 } from "./users/storage.js";
 
 const app = express();
@@ -144,6 +145,7 @@ app.get("/admin/check", async (req, res) => {
 app.get("/v3/users/me", getProfile);
 app.patch("/v3/users/me", updateProfile);
 app.get("/v3/users/me/storage", listFiles);
+app.get("/v3/users/me/storage/summary", storageSummary);
 app.post("/v3/users/me/storage/upload-url", createUploadUrl);
 app.post("/v3/users/me/storage/complete", completeUpload);
 app.get("/v3/users/me/storage/:fileId/download", downloadFile);
