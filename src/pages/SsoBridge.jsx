@@ -67,9 +67,9 @@ export default function SsoBridge() {
           }),
         });
         
-        const data = await response.json().catch(() => ({}));
+        const data = await response.json().catch((error) => (send({ status: "unavailable", error })));
         if (!response.ok || typeof data.custom_token !== "string") {
-          send({ status: "unavailable" });
+          send({ status: "unavailable", error: response?.error });
           return;
         }
         send({ customToken: data.custom_token, status: "signed_in" });

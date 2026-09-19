@@ -45,6 +45,8 @@ jobs:
           echo "VITE_SSO_HUB_ORIGIN=${{ secrets.VITE_SSO_HUB_ORIGIN }}" >> .env
           echo "VITE_REST_COUNTRIES_URL=${{ secrets.VITE_REST_COUNTRIES_URL }}" >> .env
           echo "VITE_REST_COUNTRIES_API_KEY=${{ secrets.VITE_REST_COUNTRIES_API_KEY }}" >> .env
+          echo "VITE_LOGIN_PATH=${{ secrets.VITE_LOGIN_PATH }}" >> .env
+          echo "VITE_SSO_ALLOWED_REDIRECTS=${{ secrets.VITE_SSO_ALLOWED_REDIRECTS }}" >> .env
 
       - name: Build project
         run: npm run build

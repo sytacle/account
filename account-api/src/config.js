@@ -18,7 +18,7 @@ export const config = {
     origins: new Set(
       (
         process.env.SSO_ALLOWED_ORIGINS ||
-        "https://sytacle.com,https://my.sytacle.com,https://www.sytacle.com,http://localhost:3000,http://localhost:5173"
+        "https://sytacle.com,https://my.sytacle.com,https://www.sytacle.com,http://localhost:3000,http://localhost:5173,http://localhost:8082,http://10.205.143.24:8082,sytaclefiles://sso-callback"
       )
         .split(",")
         .map((origin) => origin.trim())

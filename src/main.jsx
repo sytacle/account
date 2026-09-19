@@ -11,13 +11,23 @@ import "./index.css";
 import App from "./App";
 import { AuthProvider } from "./context/AuthContext";
 import SsoBridge from "./pages/SsoBridge";
+import SsoLogin from "./pages/SsoLogin";
 
 const isSsoBridge = window.location.pathname === "/sso/bridge";
+const isSsoLogin = window.location.pathname === "/sso/login";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
-      {isSsoBridge ? <SsoBridge /> : <AuthProvider><App /></AuthProvider>}
+      {isSsoBridge ? (
+        <SsoBridge />
+      ) : isSsoLogin ? (
+        <SsoLogin />
+      ) : (
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      )}
     </BrowserRouter>
   </StrictMode>,
 );
